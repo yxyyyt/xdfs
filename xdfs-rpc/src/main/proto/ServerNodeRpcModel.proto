@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package com.sciatta.xdfs.server.rpc;
+
+option java_multiple_files = true;
+option java_package = "com.sciatta.xdfs.server.rpc.model";
+option java_outer_classname = "ServerNodeRpcModelProto";
+
+message RegisterRequest{
+  string ip = 1;
+  string hostname  = 2;
+  int32 nioPort = 3;
+}
+message RegisterResponse{
+  int32 status = 1;
+}
+message HeartbeatRequest{
+  string ip = 1;
+  string hostname  = 2;
+  int32 nioPort = 3;
+}
+message HeartbeatResponse{
+  int32 status = 1;
+  string commands = 2;
+}
+message MkdirRequest{
+  string path  = 1;
+}
+message MkdirResponse{
+  int32 status  = 1;
+}

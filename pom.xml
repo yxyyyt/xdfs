@@ -9,10 +9,11 @@
     <version>${revision}</version>
     <packaging>pom</packaging>
     <modules>
+        <module>xdfs-common</module>
         <module>xdfs-server</module>
-        <module>xdfs-rpc</module>
         <module>xdfs-store</module>
         <module>xdfs-client</module>
+        <module>xdfs-rpc</module>
     </modules>
 
     <properties>
@@ -21,11 +22,67 @@
         <maven.compiler.source>8</maven.compiler.source>
         <maven.compiler.target>8</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <grpc.version>1.52.1</grpc.version>
+        <junit.version>4.13.1</junit.version>
+
+        <os-maven-plugin.version>1.4.1.Final</os-maven-plugin.version>
+        <protobuf-maven-plugin.version>0.5.0</protobuf-maven-plugin.version>
+        <protoc.version>3.0.0</protoc.version>
+        <protoc-gen-grpc-java.version>1.0.0</protoc-gen-grpc-java.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
-
+            <!-- xdfs -->
+            <dependency>
+                <groupId>com.sciatta.xdo</groupId>
+                <artifactId>xdfs-common</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sciatta.xdo</groupId>
+                <artifactId>xdfs-server</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sciatta.xdo</groupId>
+                <artifactId>xdfs-store</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sciatta.xdo</groupId>
+                <artifactId>xdfs-client</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sciatta.xdo</groupId>
+                <artifactId>xdfs-rpc</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <!-- grpc -->
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-netty-shaded</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-protobuf</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-stub</artifactId>
+                <version>${grpc.version}</version>
+            </dependency>
+            <!-- junit -->
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
+                <scope>test</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 

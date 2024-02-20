@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package com.sciatta.xdfs.server.rpc;
+
+option java_multiple_files = true;
+option java_package = "com.sciatta.xdfs.server.rpc.service";
+option java_outer_classname = "ServerNodeRpcServiceProto";
+
+import "ServerNodeRpcModel.proto";
+
+service ServerNodeRpcService {
+  rpc register(RegisterRequest) returns (RegisterResponse);
+  rpc heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+  rpc mkdir(MkdirRequest) returns (MkdirResponse);
+}

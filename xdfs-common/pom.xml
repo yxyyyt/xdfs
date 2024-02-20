@@ -10,7 +10,7 @@
     </parent>
 
     <groupId>com.sciatta.xdo</groupId>
-    <artifactId>xdfs-server</artifactId>
+    <artifactId>xdfs-common</artifactId>
 
     <properties>
         <maven.compiler.source>8</maven.compiler.source>
@@ -18,16 +18,4 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
-    <dependencies>
-        <!-- xdfs -->
-        <dependency>
-            <groupId>com.sciatta.xdo</groupId>
-            <artifactId>xdfs-rpc</artifactId>
-        </dependency>
-        <!-- junit -->
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-        </dependency>
-    </dependencies>
 </project>
