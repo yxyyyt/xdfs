@@ -12,7 +12,7 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 /**
  * Created by Rain on 2024/2/21<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 同元数据节点通信的核心组件
+ * 同名称节点通信的核心组件
  */
 public class NameNodeServiceActor {
     private static final String NAMENODE_HOSTNAME = "localhost";
@@ -29,7 +29,7 @@ public class NameNodeServiceActor {
     }
 
     /**
-     * 向元数据节点发起注册
+     * 向名称节点发起注册
      */
     public void register() throws Exception {
         Thread registerThread = new RegisterThread();
@@ -38,14 +38,14 @@ public class NameNodeServiceActor {
     }
 
     /**
-     * 向元数据节点发起心跳
+     * 向名称节点发起心跳
      */
     public void heartbeat() {
         new HeartbeatThread().start();
     }
 
     /**
-     * 向元数据节点发起注册的线程
+     * 向名称节点发起注册的线程
      */
     class RegisterThread extends Thread {
 
@@ -68,7 +68,7 @@ public class NameNodeServiceActor {
     }
 
     /**
-     * 向元数据节点发起心跳的线程
+     * 向名称节点发起心跳的线程
      */
     class HeartbeatThread extends Thread {
 

@@ -8,7 +8,7 @@ import java.io.IOException;
 /**
  * Created by Rain on 2024/2/20<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 元数据节点的Rpc服务，基于Grpc
+ * 名称节点的Rpc服务，基于Grpc
  */
 public class NameNodeRpcServer {
     private static final int DEFAULT_PORT = 50070;
