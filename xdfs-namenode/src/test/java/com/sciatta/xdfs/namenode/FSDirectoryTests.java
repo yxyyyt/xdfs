@@ -1,4 +1,4 @@
-package com.sciatta.xdfs.server;
+package com.sciatta.xdfs.namenode;
 
 import org.junit.Test;
 

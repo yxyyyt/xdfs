@@ -1,11 +1,11 @@
-package com.sciatta.xdfs.server;
+package com.sciatta.xdfs.namenode;
 
 /**
  * Created by Rain on 2024/2/19<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 存储节点信息
+ * 数据节点信息
  */
-public class StoreNodeInfo {
+public class DataNodeInfo {
     /**
      * IP地址
      */
@@ -21,7 +21,7 @@ public class StoreNodeInfo {
      */
     private long latestHeartbeatTime = System.currentTimeMillis();
 
-    public StoreNodeInfo(String ip, String hostname) {
+    public DataNodeInfo(String ip, String hostname) {
         this.ip = ip;
         this.hostname = hostname;
     }

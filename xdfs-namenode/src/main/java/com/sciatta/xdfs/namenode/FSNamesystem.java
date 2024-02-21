@@ -1,4 +1,4 @@
-package com.sciatta.xdfs.server;
+package com.sciatta.xdfs.namenode;
 
 /**
  * Created by Rain on 2024/2/19<br>

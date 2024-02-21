@@ -1,4 +1,4 @@
-package com.sciatta.xdfs.server;
+package com.sciatta.xdfs.namenode;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -8,42 +8,42 @@ import java.io.IOException;
 /**
  * Created by Rain on 2024/2/20<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 服务节点的Rpc服务
+ * 元数据节点的Rpc服务，基于Grpc
  */
-public class ServerNodeRpcServer {
+public class NameNodeRpcServer {
     private static final int DEFAULT_PORT = 50070;
 
     private Server server = null;
 
     private final FSNamesystem fsNamesystem;
 
-    private final StoreNodeManager storeNodeManager;
+    private final DataNodeManager dataNodeManager;
 
-    public ServerNodeRpcServer(FSNamesystem fsNamesystem, StoreNodeManager storeNodeManager) {
+    public NameNodeRpcServer(FSNamesystem fsNamesystem, DataNodeManager dataNodeManager) {
         this.fsNamesystem = fsNamesystem;
-        this.storeNodeManager = storeNodeManager;
+        this.dataNodeManager = dataNodeManager;
     }
 
     /**
-     * 启动服务节点的Rpc服务
+     * 启动Rpc服务
      *
      * @throws IOException IO异常
      */
     public void start() throws IOException {
         server = ServerBuilder
                 .forPort(DEFAULT_PORT)
-                .addService(new ServerNodeRpcServiceImpl(fsNamesystem, storeNodeManager))
+                .addService(new NameNodeRpcServiceImpl(fsNamesystem, dataNodeManager))
                 .build()
                 .start();
 
         // TODO to log
-        System.out.println("ServerNodeRpcServer启动，监听端口号：" + DEFAULT_PORT);
+        System.out.println("NameNodeRpcServer启动，监听端口号：" + DEFAULT_PORT);
 
-        Runtime.getRuntime().addShutdownHook(new Thread(ServerNodeRpcServer.this::stop));
+        Runtime.getRuntime().addShutdownHook(new Thread(NameNodeRpcServer.this::stop));
     }
 
     /**
-     * 停止服务节点的Rpc服务
+     * 停止Rpc服务
      */
     public void stop() {
         if (server != null) {
@@ -52,7 +52,7 @@ public class ServerNodeRpcServer {
     }
 
     /**
-     * 服务节点的Rpc服务阻塞等待停止
+     * Rpc服务阻塞等待停止
      *
      * @throws InterruptedException 中断异常
      */

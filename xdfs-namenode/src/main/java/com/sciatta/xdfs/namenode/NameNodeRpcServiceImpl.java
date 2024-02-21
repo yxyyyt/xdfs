@@ -1,15 +1,15 @@
-package com.sciatta.xdfs.server;
+package com.sciatta.xdfs.namenode;
 
-import com.sciatta.xdfs.server.rpc.model.*;
-import com.sciatta.xdfs.server.rpc.service.ServerNodeRpcServiceGrpc;
+import com.sciatta.xdfs.namenode.rpc.model.*;
+import com.sciatta.xdfs.namenode.rpc.service.NameNodeRpcServiceGrpc;
 import io.grpc.stub.StreamObserver;
 
 /**
  * Created by Rain on 2024/2/20<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 服务节点的Rpc服务实现
+ * 元数据节点的Rpc服务实现
  */
-public class ServerNodeRpcServiceImpl extends ServerNodeRpcServiceGrpc.ServerNodeRpcServiceImplBase {
+public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcServiceImplBase {
     /**
      * 成功
      */
@@ -22,16 +22,16 @@ public class ServerNodeRpcServiceImpl extends ServerNodeRpcServiceGrpc.ServerNod
 
     private final FSNamesystem namesystem;
 
-    private final StoreNodeManager storeNodeManager;
+    private final DataNodeManager dataNodeManager;
 
-    public ServerNodeRpcServiceImpl(FSNamesystem namesystem, StoreNodeManager storeNodeManager) {
+    public NameNodeRpcServiceImpl(FSNamesystem namesystem, DataNodeManager dataNodeManager) {
         this.namesystem = namesystem;
-        this.storeNodeManager = storeNodeManager;
+        this.dataNodeManager = dataNodeManager;
     }
 
     @Override
     public void register(RegisterRequest request, StreamObserver<RegisterResponse> responseObserver) {
-        this.storeNodeManager.register(request.getIp(), request.getHostname());
+        this.dataNodeManager.register(request.getIp(), request.getHostname());
 
         RegisterResponse response = RegisterResponse.newBuilder()
                 .setStatus(STATUS_SUCCESS)
@@ -43,7 +43,7 @@ public class ServerNodeRpcServiceImpl extends ServerNodeRpcServiceGrpc.ServerNod
 
     @Override
     public void heartbeat(HeartbeatRequest request, StreamObserver<HeartbeatResponse> responseObserver) {
-        this.storeNodeManager.heartbeat(request.getIp(), request.getHostname());
+        this.dataNodeManager.heartbeat(request.getIp(), request.getHostname());
 
         HeartbeatResponse response = HeartbeatResponse.newBuilder()
                 .setStatus(STATUS_SUCCESS)
@@ -58,7 +58,7 @@ public class ServerNodeRpcServiceImpl extends ServerNodeRpcServiceGrpc.ServerNod
         this.namesystem.mkdir(request.getPath());
 
         // TODO to log
-        System.out.println("创建目录：path" + request.getPath());
+        System.out.println("创建目录, path=" + request.getPath());
 
         MkdirResponse response = MkdirResponse.newBuilder()
                 .setStatus(STATUS_SUCCESS)
