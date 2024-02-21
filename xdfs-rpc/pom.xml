@@ -9,7 +9,6 @@
         <version>${revision}</version>
     </parent>
 
-    <groupId>com.sciatta.xdo</groupId>
     <artifactId>xdfs-rpc</artifactId>
 
     <properties>

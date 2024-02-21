@@ -1,10 +1,10 @@
 syntax = "proto3";
 
-package com.sciatta.xdfs.server.rpc;
+package com.sciatta.xdfs.namenode.rpc;
 
 option java_multiple_files = true;
-option java_package = "com.sciatta.xdfs.server.rpc.model";
-option java_outer_classname = "ServerNodeRpcModelProto";
+option java_package = "com.sciatta.xdfs.namenode.rpc.model";
+option java_outer_classname = "NameNodeRpcModelProto";
 
 message RegisterRequest{
   string ip = 1;
