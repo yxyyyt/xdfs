@@ -39,6 +39,7 @@ public class NameNodeRpcServer {
         // TODO to log
         System.out.println("NameNodeRpcServer启动，监听端口号：" + DEFAULT_PORT);
 
+        // TODO 抽取公共代码
         Runtime.getRuntime().addShutdownHook(new Thread(NameNodeRpcServer.this::stop));
     }
 

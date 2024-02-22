@@ -13,12 +13,12 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
     /**
      * 成功
      */
-    public static final Integer STATUS_SUCCESS = 1;
+    public static final Integer STATUS_SUCCESS = 0;
 
     /**
      * 失败
      */
-    public static final Integer STATUS_FAILURE = 2;
+    public static final Integer STATUS_FAILURE = 1;
 
     private final FSNamesystem namesystem;
 
