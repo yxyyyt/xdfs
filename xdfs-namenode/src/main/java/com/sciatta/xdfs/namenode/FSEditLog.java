@@ -1,13 +1,18 @@
 package com.sciatta.xdfs.namenode;
 
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.IOException;
+
 /**
  * Created by Rain on 2024/2/19<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 管理操作日志的核心组件
+ * 管理事务日志的核心组件
  */
-public class FSEditlog {
+@Slf4j
+public class FSEditLog {
     /**
-     * 当前操作日志序号
+     * 当前事务日志序号
      */
     private long txidSeq = 0L;
 
@@ -27,21 +32,21 @@ public class FSEditlog {
     private volatile Boolean isSchedulingSync = false;
 
     /**
-     * 同步中最大的操作日志序号
+     * 同步中最大的事务日志序号
      */
     private volatile Long syncTxid = 0L;
 
     /**
-     * 每个线程自己本地的操作日志序号
+     * 每个线程自己本地的事务日志序号
      */
-    private ThreadLocal<Long> localTxid = new ThreadLocal<>();
+    private final ThreadLocal<Long> localTxid = new ThreadLocal<>();
 
     /**
-     * 记录操作日志
+     * 记录事务日志
      *
-     * @param content 操作日志内容
+     * @param editLogFactory 事务日志工厂
      */
-    public void logEdit(String content) {
+    public void logEdit(EditLogFactory editLogFactory) {
         synchronized (this) {
             waitSchedulingSync();
 
@@ -49,8 +54,12 @@ public class FSEditlog {
             long txid = txidSeq;
             localTxid.set(txid); // 本地线程副本
 
-            EditLog log = new EditLog(txid, content);
-            doubleBuffer.write(log);
+            EditLog editLog = editLogFactory.create(txid);
+            try {
+                doubleBuffer.write(editLog);
+            } catch (IOException e) {
+                log.error("write {} to double buffer catch exception {}", editLog, e.getMessage());
+            }
 
             if (!doubleBuffer.shouldSyncToDisk()) {
                 return;
@@ -75,7 +84,7 @@ public class FSEditlog {
     }
 
     /**
-     * 同步操作日志
+     * 同步事务日志
      */
     private void logSync() {
         synchronized (this) {
@@ -90,17 +99,21 @@ public class FSEditlog {
             }
 
             if (txid <= syncTxid) {
-                throw new RuntimeException("当前线程记录的操作日志已经存在线程同步");  // TODO 为什么走到这里？
+                throw new RuntimeException("当前线程记录的事务日志已经存在线程同步");  // TODO 为什么走到这里？
             }
 
             doubleBuffer.setReadyToSync();
-            syncTxid = txid;   // 记录正在同步的最大操作日志序号
+            syncTxid = txid;   // 记录正在同步的最大事务日志序号
             isSchedulingSync = false;
             isSyncRunning = true;
             notifyAll();
         }
 
-        doubleBuffer.flush();
+        try {
+            doubleBuffer.flush();
+        } catch (IOException e) {
+            log.error("flush double buffer catch exception {}", e.getMessage());
+        }
 
         synchronized (this) {
             isSyncRunning = false;

@@ -1,39 +1,60 @@
 package com.sciatta.xdfs.namenode;
 
+import com.sciatta.xdfs.common.util.FastJsonUtils;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.ByteArrayOutputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+
 /**
  * Created by Rain on 2024/2/22<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
  * 内存双缓存
  */
+@Slf4j
 public class DoubleBuffer {
     /**
-     * 单缓存最大值；默认512KB
+     * 单缓存容量最大值，单位：字节
      */
-    public static final Long EDIT_LOG_BUFFER_LIMIT = 512 * 1024L;
+    public static final int EDIT_LOG_BUFFER_LIMIT = 25 * 1024;  // TODO to config
 
     /**
-     * 写入操作日志缓存
+     * 事务日志保存路径
+     */
+    public static final String EDIT_LOG_FILE_PATH = "D:\\data\\project\\xdfs\\editlog\\";   // TODO to config
+
+    /**
+     * 写入事务日志缓存
      */
     private EditLogBuffer currentBuffer = new EditLogBuffer();
 
     /**
-     * 同步操作日志缓存
+     * 同步事务日志缓存
      */
     private EditLogBuffer syncBuffer = new EditLogBuffer();
 
     /**
-     * 写入操作日志
-     *
-     * @param log 操作日志
+     * 刷写缓存最小的事务日志序号
      */
-    public void write(EditLog log) {
-        currentBuffer.write(log);
+    private long startTxid = 1L;
+
+    /**
+     * 写入事务日志
+     *
+     * @param editLog 事务日志
+     */
+    public void write(EditLog editLog) throws IOException {
+        currentBuffer.write(editLog);
     }
 
     /**
      * 是否超过同步缓存最大阈值
      *
-     * @return true，需要同步操作日志；false，不需要
+     * @return true，需要同步事务日志；false，不需要
      */
     public boolean shouldSyncToDisk() {
         return currentBuffer.size() >= EDIT_LOG_BUFFER_LIMIT;
@@ -49,24 +70,42 @@ public class DoubleBuffer {
     }
 
     /**
-     * 刷写清空同步操作日志缓存
+     * 刷写清空同步事务日志缓存
      */
-    public void flush() {
+    public void flush() throws IOException {
         syncBuffer.flush();
         syncBuffer.clear();
     }
 
     /**
-     * 操作日志缓存
+     * 事务日志缓存
      */
-    static class EditLogBuffer {
+    private class EditLogBuffer {
         /**
-         * 写入操作日志
-         *
-         * @param log 操作日志
+         * 持有缓存中的字节数组
          */
-        public void write(EditLog log) {
+        private final ByteArrayOutputStream buffer;
 
+        /**
+         * 刷写缓存最大的事务日志序号
+         */
+        long endTxid = 0L;
+
+        public EditLogBuffer() {
+            this.buffer = new ByteArrayOutputStream(EDIT_LOG_BUFFER_LIMIT * 2);
+        }
+
+        /**
+         * 写入事务日志
+         *
+         * @param editLog 事务日志
+         */
+        public void write(EditLog editLog) throws IOException {
+            endTxid = editLog.getTxid();
+            buffer.write(FastJsonUtils.formatObjectToJsonString(editLog).getBytes());
+            buffer.write("\n".getBytes());
+
+            log.debug("write a EditLog {}, current buffer size is {}", editLog, size());
         }
 
         /**
@@ -74,22 +113,35 @@ public class DoubleBuffer {
          *
          * @return 当前缓存数据大小
          */
-        public Long size() {
-            return 0L;
+        public int size() {
+            return buffer.size();
         }
 
         /**
          * 刷写缓存
          */
-        public void flush() {
+        public void flush() throws IOException {
+            byte[] data = buffer.toByteArray();
+            ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 
+            String editsLogFilePath = EDIT_LOG_FILE_PATH + "edits-"
+                    + startTxid + "-" + endTxid + ".log";
+
+            try (RandomAccessFile file = new RandomAccessFile(editsLogFilePath, "rw");
+                 FileOutputStream out = new FileOutputStream(file.getFD());
+                 FileChannel editsLogFileChannel = out.getChannel()) {
+                editsLogFileChannel.write(dataBuffer);
+                editsLogFileChannel.force(false);
+            }
+
+            startTxid = endTxid + 1;
         }
 
         /**
          * 清空缓存
          */
         public void clear() {
-
+            buffer.reset();
         }
     }
 }

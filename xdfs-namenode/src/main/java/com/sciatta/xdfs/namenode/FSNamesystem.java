@@ -7,21 +7,28 @@ package com.sciatta.xdfs.namenode;
  */
 public class FSNamesystem {
     private final FSDirectory directory;
-    private final FSEditlog editlog;
+    private final FSEditLog editlog;
 
     public FSNamesystem() {
         this.directory = new FSDirectory();
-        this.editlog = new FSEditlog();
+        this.editlog = new FSEditLog();
     }
 
     /**
      * 创建目录
+     *
      * @param path 目录路径
      * @return 是否成功
      */
     public Boolean mkdir(String path) {
         this.directory.mkdir(path);
-        this.editlog.logEdit("创建了一个目录：" + path);
+        this.editlog.logEdit(txid -> {
+            EditLog editLog = new EditLog();
+            editLog.setTxid(txid);
+            editLog.setPath(path);
+            editLog.setOperate(EditLogOperateEnum.MKDIR.getOperate());
+            return editLog;
+        });
         return true;
     }
 }

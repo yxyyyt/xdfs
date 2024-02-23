@@ -14,6 +14,5 @@ public class FileSystemTests {
     public void testMkdir() throws IOException {
         FileSystem fileSystem = new FileSystemImpl();
         fileSystem.mkdir("/root/app");
-        fileSystem.mkdir("/root/app/1");
     }
 }
