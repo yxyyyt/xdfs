@@ -10,9 +10,23 @@ import java.io.IOException;
  * FileSystemTests
  */
 public class FileSystemTests {
+    private final FileSystem fileSystem = new FileSystemImpl();
+
     @Test
-    public void testMkdir() throws IOException {
-        FileSystem fileSystem = new FileSystemImpl();
+    public void testMkdir() {
         fileSystem.mkdir("/root/app");
+    }
+
+    @Test
+    public void testMkdirUsingSingleThread() {
+        int number = 10;
+        for (int i = 0; i < number; i++) {
+            fileSystem.mkdir("/root/app/file" + i);
+        }
+    }
+
+    @Test
+    public void testShutdown() {
+        fileSystem.shutdown();
     }
 }

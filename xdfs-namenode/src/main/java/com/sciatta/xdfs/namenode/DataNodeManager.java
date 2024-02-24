@@ -32,7 +32,6 @@ public class DataNodeManager {
     public Boolean register(String ip, String hostname) {
         DataNodeInfo dataNodeInfo = new DataNodeInfo(ip, hostname);
         dataNodes.put(ip + "-" + hostname, dataNodeInfo);
-        System.out.println("DataNode注册：ip=" + ip + ",hostname=" + hostname);    // TODO to log
         return true;
     }
 
@@ -46,7 +45,6 @@ public class DataNodeManager {
     public Boolean heartbeat(String ip, String hostname) {
         DataNodeInfo dataNodeInfo = dataNodes.get(ip + "-" + hostname);
         dataNodeInfo.setLatestHeartbeatTime(System.currentTimeMillis());
-        System.out.println("DataNode发送心跳：ip=" + ip + ",hostname=" + hostname);  // TODO to log
         return true;
     }
 

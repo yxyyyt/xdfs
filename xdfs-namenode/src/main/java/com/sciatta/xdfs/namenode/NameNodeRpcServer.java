@@ -8,19 +8,19 @@ import java.io.IOException;
 /**
  * Created by Rain on 2024/2/20<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 名称节点的Rpc服务，基于Grpc
+ * 主节点的Rpc服务，基于Grpc
  */
 public class NameNodeRpcServer {
     private static final int DEFAULT_PORT = 50070;
 
     private Server server = null;
 
-    private final FSNamesystem fsNamesystem;
+    private final FSNameSystem nameSystem;
 
     private final DataNodeManager dataNodeManager;
 
-    public NameNodeRpcServer(FSNamesystem fsNamesystem, DataNodeManager dataNodeManager) {
-        this.fsNamesystem = fsNamesystem;
+    public NameNodeRpcServer(FSNameSystem nameSystem, DataNodeManager dataNodeManager) {
+        this.nameSystem = nameSystem;
         this.dataNodeManager = dataNodeManager;
     }
 
@@ -32,7 +32,7 @@ public class NameNodeRpcServer {
     public void start() throws IOException {
         server = ServerBuilder
                 .forPort(DEFAULT_PORT)
-                .addService(new NameNodeRpcServiceImpl(fsNamesystem, dataNodeManager))
+                .addService(new NameNodeRpcServiceImpl(nameSystem, dataNodeManager))
                 .build()
                 .start();
 

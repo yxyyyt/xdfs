@@ -3,10 +3,10 @@ package com.sciatta.xdfs.namenode;
 /**
  * Created by Rain on 2024/2/19<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 名称节点
+ * 主节点
  */
 public class NameNode {
-    private FSNamesystem fsNamesystem;
+    private FSNameSystem nameSystem;
     private DataNodeManager dataNodeManager;
     private NameNodeRpcServer nameNodeRpcServer;
 
@@ -14,9 +14,9 @@ public class NameNode {
      * 初始化
      */
     private void initialize() {
-        this.fsNamesystem = new FSNamesystem();
+        this.nameSystem = new FSNameSystem();
         this.dataNodeManager = new DataNodeManager();
-        this.nameNodeRpcServer = new NameNodeRpcServer(fsNamesystem, dataNodeManager);
+        this.nameNodeRpcServer = new NameNodeRpcServer(nameSystem, dataNodeManager);
     }
 
     /**

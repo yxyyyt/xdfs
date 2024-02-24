@@ -72,6 +72,18 @@ public class FSEditLog {
     }
 
     /**
+     * 强制刷写清空同步事务日志缓存
+     */
+    public void flush() {
+        try {
+            doubleBuffer.setReadyToSync();
+            doubleBuffer.flush();
+        } catch (IOException e) {
+            log.error("force flush double buffer catch exception {}", e.getMessage());
+        }
+    }
+
+    /**
      * 等待其他线程切换双缓存完成，避免写入缓存过载
      */
     private void waitSchedulingSync() {

@@ -21,6 +21,10 @@
         <!-- xdfs -->
         <dependency>
             <groupId>com.sciatta.xdfs</groupId>
+            <artifactId>xdfs-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.sciatta.xdfs</groupId>
             <artifactId>xdfs-rpc</artifactId>
         </dependency>
         <!-- junit -->

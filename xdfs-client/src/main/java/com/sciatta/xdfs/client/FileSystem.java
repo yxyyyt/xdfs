@@ -12,7 +12,11 @@ public interface FileSystem {
      * 创建目录
      *
      * @param path 目录路径
-     * @throws IOException IO异常
      */
-    void mkdir(String path) throws IOException;
+    void mkdir(String path);
+
+    /**
+     * 关闭主节点
+     */
+    void shutdown();
 }

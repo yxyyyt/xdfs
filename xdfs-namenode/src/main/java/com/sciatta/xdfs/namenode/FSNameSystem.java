@@ -5,11 +5,11 @@ package com.sciatta.xdfs.namenode;
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
  * 管理元数据的核心组件
  */
-public class FSNamesystem {
+public class FSNameSystem {
     private final FSDirectory directory;
     private final FSEditLog editlog;
 
-    public FSNamesystem() {
+    public FSNameSystem() {
         this.directory = new FSDirectory();
         this.editlog = new FSEditLog();
     }
@@ -30,5 +30,12 @@ public class FSNamesystem {
             return editLog;
         });
         return true;
+    }
+
+    /**
+     * 强制刷写清空同步事务日志缓存
+     */
+    public void flush() {
+        this.editlog.flush();
     }
 }

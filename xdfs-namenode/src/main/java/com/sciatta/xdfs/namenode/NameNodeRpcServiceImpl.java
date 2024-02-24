@@ -3,39 +3,47 @@ package com.sciatta.xdfs.namenode;
 import com.sciatta.xdfs.namenode.rpc.model.*;
 import com.sciatta.xdfs.namenode.rpc.service.NameNodeRpcServiceGrpc;
 import io.grpc.stub.StreamObserver;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by Rain on 2024/2/20<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 名称节点的Rpc服务实现
+ * 主节点的Rpc服务实现
  */
+@Slf4j
 public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcServiceImplBase {
-    /**
-     * 成功
-     */
-    public static final Integer STATUS_SUCCESS = 0;
 
-    /**
-     * 失败
-     */
-    public static final Integer STATUS_FAILURE = 1;
-
-    private final FSNamesystem namesystem;
+    private final FSNameSystem nameSystem;
 
     private final DataNodeManager dataNodeManager;
 
-    public NameNodeRpcServiceImpl(FSNamesystem namesystem, DataNodeManager dataNodeManager) {
-        this.namesystem = namesystem;
+    /**
+     * 主节点是否正在运行
+     */
+    private volatile Boolean isRunning = true;
+
+    public NameNodeRpcServiceImpl(FSNameSystem nameSystem, DataNodeManager dataNodeManager) {
+        this.nameSystem = nameSystem;
         this.dataNodeManager = dataNodeManager;
     }
 
     @Override
     public void register(RegisterRequest request, StreamObserver<RegisterResponse> responseObserver) {
-        this.dataNodeManager.register(request.getIp(), request.getHostname());
+        RegisterResponse response;
 
-        RegisterResponse response = RegisterResponse.newBuilder()
-                .setStatus(STATUS_SUCCESS)
-                .build();
+        if (!isRunning) {
+            response = RegisterResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SHUTDOWN.getValue())
+                    .build();
+        } else {
+            this.dataNodeManager.register(request.getIp(), request.getHostname());
+            response = RegisterResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
+                    .build();
+        }
+
+        log.debug("register request ip {}, hostname {}, response status {}",
+                request.getIp(), request.getHostname(), response.getStatus());
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -43,11 +51,21 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
 
     @Override
     public void heartbeat(HeartbeatRequest request, StreamObserver<HeartbeatResponse> responseObserver) {
-        this.dataNodeManager.heartbeat(request.getIp(), request.getHostname());
+        HeartbeatResponse response;
 
-        HeartbeatResponse response = HeartbeatResponse.newBuilder()
-                .setStatus(STATUS_SUCCESS)
-                .build();
+        if (!isRunning) {
+            response = HeartbeatResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SHUTDOWN.getValue())
+                    .build();
+        } else {
+            this.dataNodeManager.heartbeat(request.getIp(), request.getHostname());
+            response = HeartbeatResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
+                    .build();
+        }
+
+        log.debug("heartbeat request ip {}, hostname {}, response status {}",
+                request.getIp(), request.getHostname(), response.getStatus());
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
@@ -55,14 +73,42 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
 
     @Override
     public void mkdir(MkdirRequest request, StreamObserver<MkdirResponse> responseObserver) {
-        this.namesystem.mkdir(request.getPath());
+        MkdirResponse response;
 
-        // TODO to log
-        System.out.println("创建目录, path=" + request.getPath());
+        if (!isRunning) {
+            response = MkdirResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SHUTDOWN.getValue())
+                    .build();
+        } else {
+            this.nameSystem.mkdir(request.getPath());
+            response = MkdirResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
+                    .build();
+        }
 
-        MkdirResponse response = MkdirResponse.newBuilder()
-                .setStatus(STATUS_SUCCESS)
-                .build();
+        log.debug("mkdir path {}, response status {}", request.getPath(), response.getStatus());
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void shutdown(ShutdownRequest request, StreamObserver<ShutdownResponse> responseObserver) {
+        ShutdownResponse response;
+
+        if (isRunning) {
+            this.isRunning = false;
+            this.nameSystem.flush();
+            response = ShutdownResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
+                    .build();
+        } else {
+            response = ShutdownResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SHUTDOWN.getValue())
+                    .build();
+        }
+
+        log.debug("shutdown, response status {}", response.getStatus());
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
