@@ -1,5 +1,6 @@
-package com.sciatta.xdfs.namenode;
+package com.sciatta.xdfs.common.fs;
 
+import com.sciatta.xdfs.common.fs.FSDirectory;
 import org.junit.Test;
 
 import static org.junit.Assert.*;

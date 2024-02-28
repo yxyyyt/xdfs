@@ -1,4 +1,4 @@
-package com.sciatta.xdfs.namenode;
+package com.sciatta.xdfs.common.fs;
 
 import lombok.Getter;
 
