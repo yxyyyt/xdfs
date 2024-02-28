@@ -3,6 +3,7 @@ package com.sciatta.xdfs.namenode;
 import com.sciatta.xdfs.common.fs.EditLog;
 import com.sciatta.xdfs.common.fs.EditLogOperateEnum;
 import com.sciatta.xdfs.common.fs.FSDirectory;
+import com.sciatta.xdfs.common.util.ClassUtils;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,11 @@ public class FSNameSystem {
      * 当前缓存的一批事务日志
      */
     private final List<EditLog> currentBufferedEditLog = new ArrayList<>();
+
+    /**
+     * 当前缓存的一批事务日志的最大序号
+     */
+    private long currentBufferedMaxTxid;
 
     /**
      * 当前缓存的磁盘事务日志序号
@@ -136,12 +142,23 @@ public class FSNameSystem {
      * @param fetchedEditLog 拉取到的事务日志
      */
     private void fetchFromBufferedEditLog(List<EditLog> fetchedEditLog) {
-        currentBufferedEditLog.clear(); // TODO 优化，看一下缓存中是否还有没有取走的数据
+        long fetchTxid = syncedTxid + 1;
+
+        if (fetchTxid <= currentBufferedMaxTxid) {
+            fetchFromCurrentBuffer(fetchedEditLog);
+            return;
+        }
+
+        currentBufferedEditLog.clear();
 
         String[] bufferedEditLog = this.editlog.getBufferedEditLog();
 
         for (String editLog : bufferedEditLog) {
-            currentBufferedEditLog.add(FastJsonUtils.parseJsonStringToObject(editLog, EditLog.class));
+            EditLog el = FastJsonUtils.parseJsonStringToObject(editLog, EditLog.class);
+            if (el != null) {
+                currentBufferedEditLog.add(el);
+                currentBufferedMaxTxid = el.getTxid();
+            }
         }
 
         bufferedFlushedTxid = null;
@@ -171,7 +188,11 @@ public class FSNameSystem {
 
 
             for (String editLog : editLogList) {
-                currentBufferedEditLog.add(FastJsonUtils.parseJsonStringToObject(editLog, EditLog.class));
+                EditLog el = FastJsonUtils.parseJsonStringToObject(editLog, EditLog.class);
+                if (el != null) {
+                    currentBufferedEditLog.add(el);
+                    currentBufferedMaxTxid = el.getTxid();
+                }
             }
 
             bufferedFlushedTxid = flushedTxid;

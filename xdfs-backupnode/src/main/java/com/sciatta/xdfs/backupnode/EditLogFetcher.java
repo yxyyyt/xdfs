@@ -14,6 +14,8 @@ import java.util.List;
  */
 @Slf4j
 public class EditLogFetcher extends Thread {
+    public static final Integer BACKUP_NODE_FETCH_SIZE = 10;    // TODO to config
+
     private final NameNodeRpcClient nameNodeRpcClient;
     private final FSNameSystem nameSystem;
 
@@ -31,6 +33,12 @@ public class EditLogFetcher extends Thread {
                 log.debug("no fetch any EditLog");
                 ConcurrentUtils.silentSleepToSeconds(1);
                 continue;
+            }
+
+            // 避免请求过于频繁
+            if (editLogList.size() < BACKUP_NODE_FETCH_SIZE) {
+                log.debug("fetch actual size {} < config size {}", editLogList.size(), BACKUP_NODE_FETCH_SIZE);
+                ConcurrentUtils.silentSleepToSeconds(1);
             }
 
             for (EditLog editLog : editLogList) {
