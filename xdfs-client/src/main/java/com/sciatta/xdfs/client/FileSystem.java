@@ -1,7 +1,5 @@
 package com.sciatta.xdfs.client;
 
-import java.io.IOException;
-
 /**
  * Created by Rain on 2024/2/21<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>

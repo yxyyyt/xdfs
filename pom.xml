@@ -14,6 +14,7 @@
         <module>xdfs-datanode</module>
         <module>xdfs-client</module>
         <module>xdfs-rpc</module>
+        <module>xdfs-backupnode</module>
     </modules>
 
     <properties>
@@ -29,6 +30,9 @@
         <grpc.version>1.52.1</grpc.version>
         <junit.version>4.13.1</junit.version>
         <fastjson.verson>1.2.76</fastjson.verson>
+        <oshi.verison>3.5.0</oshi.verison>
+        <netty.version>4.1.100.Final</netty.version>
+        <guava.version>32.1.2-jre</guava.version>
 
         <os-maven-plugin.version>1.4.1.Final</os-maven-plugin.version>
         <protobuf-maven-plugin.version>0.5.0</protobuf-maven-plugin.version>
@@ -62,6 +66,11 @@
             <dependency>
                 <groupId>com.sciatta.xdfs</groupId>
                 <artifactId>xdfs-rpc</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.sciatta.xdfs</groupId>
+                <artifactId>xdfs-backupnode</artifactId>
                 <version>${revision}</version>
             </dependency>
             <!-- slf4j -->
@@ -125,6 +134,24 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>fastjson</artifactId>
                 <version>${fastjson.verson}</version>
+            </dependency>
+            <!-- netty -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-all</artifactId>
+                <version>${netty.version}</version>
+            </dependency>
+            <!-- oshi -->
+            <dependency>
+                <groupId>com.github.oshi</groupId>
+                <artifactId>oshi-core</artifactId>
+                <version>${oshi.verison}</version>
+            </dependency>
+            <!-- guava -->
+            <dependency>
+                <groupId>com.google.guava</groupId>
+                <artifactId>guava</artifactId>
+                <version>${guava.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

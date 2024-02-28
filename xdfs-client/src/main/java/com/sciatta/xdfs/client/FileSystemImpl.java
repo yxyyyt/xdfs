@@ -10,8 +10,6 @@ import io.grpc.netty.shaded.io.grpc.netty.NegotiationType;
 import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.IOException;
-
 /**
  * Created by Rain on 2024/2/21<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
@@ -22,14 +20,14 @@ public class FileSystemImpl implements FileSystem {
     private static final String NAMENODE_HOSTNAME = "localhost";
     private static final Integer NAMENODE_PORT = 50070;
 
-    private final NameNodeRpcServiceGrpc.NameNodeRpcServiceBlockingStub namenode;
+    private final NameNodeRpcServiceGrpc.NameNodeRpcServiceBlockingStub nameNodeRpcService;
 
     public FileSystemImpl() {
         ManagedChannel channel = NettyChannelBuilder
                 .forAddress(NAMENODE_HOSTNAME, NAMENODE_PORT)
                 .negotiationType(NegotiationType.PLAINTEXT)
                 .build();
-        this.namenode = NameNodeRpcServiceGrpc.newBlockingStub(channel);
+        this.nameNodeRpcService = NameNodeRpcServiceGrpc.newBlockingStub(channel);
     }
 
 
@@ -39,7 +37,7 @@ public class FileSystemImpl implements FileSystem {
                 .setPath(path)
                 .build();
 
-        MkdirResponse response = namenode.mkdir(request);
+        MkdirResponse response = nameNodeRpcService.mkdir(request);
 
         log.debug("mkdir path {}, response status {}", path, response.getStatus());
     }
@@ -48,7 +46,7 @@ public class FileSystemImpl implements FileSystem {
     public void shutdown() {
         ShutdownRequest request = ShutdownRequest.newBuilder().build();
 
-        ShutdownResponse response = namenode.shutdown(request);
+        ShutdownResponse response = nameNodeRpcService.shutdown(request);
 
         log.debug("shutdown NameNode, response status {}", response.getStatus());
     }

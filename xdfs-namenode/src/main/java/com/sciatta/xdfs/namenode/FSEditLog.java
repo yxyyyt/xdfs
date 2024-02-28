@@ -1,8 +1,10 @@
 package com.sciatta.xdfs.namenode;
 
+import com.sciatta.xdfs.common.fs.EditLog;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Created by Rain on 2024/2/19<br>
@@ -80,6 +82,28 @@ public class FSEditLog {
             doubleBuffer.flush();
         } catch (IOException e) {
             log.error("force flush double buffer catch exception {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 获取已经同步成功的事务日志序号
+     *
+     * @return 同步成功的事务日志序号
+     */
+    public List<String> getFlushedTxids() {
+        synchronized (this) {
+            return doubleBuffer.getFlushedTxids();
+        }
+    }
+
+    /**
+     * 获取当前内存中缓存的事务日志
+     *
+     * @return 当前内存中缓存的事务日志
+     */
+    public String[] getBufferedEditLog() {
+        synchronized (this) {
+            return doubleBuffer.getBufferedEditLog();
         }
     }
 

@@ -1,5 +1,7 @@
 package com.sciatta.xdfs.namenode;
 
+import com.sciatta.xdfs.common.fs.EditLog;
+
 /**
  * Created by Rain on 2024/2/23<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>

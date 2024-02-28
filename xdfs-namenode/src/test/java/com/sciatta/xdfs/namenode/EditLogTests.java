@@ -1,5 +1,7 @@
 package com.sciatta.xdfs.namenode;
 
+import com.sciatta.xdfs.common.fs.EditLog;
+import com.sciatta.xdfs.common.fs.EditLogOperateEnum;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
 import org.junit.Test;
 

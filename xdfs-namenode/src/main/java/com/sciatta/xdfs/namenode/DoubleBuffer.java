@@ -1,6 +1,9 @@
 package com.sciatta.xdfs.namenode;
 
+import com.sciatta.xdfs.common.fs.EditLog;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
+import com.sciatta.xdfs.common.util.StringUtils;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.ByteArrayOutputStream;
@@ -9,6 +12,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Rain on 2024/2/22<br>
@@ -43,6 +48,12 @@ public class DoubleBuffer {
     private long startTxid = 1L;
 
     /**
+     * 已经同步成功的事务日志序号范围
+     */
+    @Getter
+    private final List<String> flushedTxids = new ArrayList<>();
+
+    /**
      * 写入事务日志
      *
      * @param editLog 事务日志
@@ -75,6 +86,19 @@ public class DoubleBuffer {
     public void flush() throws IOException {
         syncBuffer.flush();
         syncBuffer.clear();
+    }
+
+    /**
+     * 获取当前内存中缓存的事务日志
+     *
+     * @return 当前内存中缓存的事务日志
+     */
+    public String[] getBufferedEditLog() {
+        String editsLogRawData = new String(currentBuffer.getBufferData());
+        if (StringUtils.isEmpty(editsLogRawData)) {
+            return new String[]{};
+        }
+        return editsLogRawData.split("\n");
     }
 
     /**
@@ -124,16 +148,17 @@ public class DoubleBuffer {
             byte[] data = buffer.toByteArray();
             ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 
-            String editsLogFilePath = EDIT_LOG_FILE_PATH + "edits-"
+            String editLogFilePath = EDIT_LOG_FILE_PATH + "edit-"
                     + startTxid + "-" + endTxid + ".log";
 
-            try (RandomAccessFile file = new RandomAccessFile(editsLogFilePath, "rw");
+            try (RandomAccessFile file = new RandomAccessFile(editLogFilePath, "rw");
                  FileOutputStream out = new FileOutputStream(file.getFD());
-                 FileChannel editsLogFileChannel = out.getChannel()) {
-                editsLogFileChannel.write(dataBuffer);
-                editsLogFileChannel.force(false);
+                 FileChannel editLogFileChannel = out.getChannel()) {
+                editLogFileChannel.write(dataBuffer);
+                editLogFileChannel.force(false);
             }
 
+            flushedTxids.add(startTxid + "_" + endTxid);
             startTxid = endTxid + 1;
         }
 
@@ -142,6 +167,15 @@ public class DoubleBuffer {
          */
         public void clear() {
             buffer.reset();
+        }
+
+        /**
+         * 获取当前缓存数据
+         *
+         * @return 缓存数据
+         */
+        public byte[] getBufferData() {
+            return buffer.toByteArray();
         }
     }
 }

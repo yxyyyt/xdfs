@@ -1,9 +1,14 @@
 package com.sciatta.xdfs.namenode;
 
+import com.sciatta.xdfs.common.fs.EditLog;
+import com.sciatta.xdfs.common.util.FastJsonUtils;
 import com.sciatta.xdfs.namenode.rpc.model.*;
 import com.sciatta.xdfs.namenode.rpc.service.NameNodeRpcServiceGrpc;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Rain on 2024/2/20<br>
@@ -109,6 +114,29 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
         }
 
         log.debug("shutdown, response status {}", response.getStatus());
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void fetchEditLog(FetchEditLogRequest request, StreamObserver<FetchEditLogResponse> responseObserver) {
+        FetchEditLogResponse response;
+        List<EditLog> fetchedEditLog = new ArrayList<>();
+
+        if (!isRunning) {
+            response = FetchEditLogResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SHUTDOWN.getValue())
+                    .build();
+        } else {
+            this.nameSystem.fetchEditLog(fetchedEditLog);
+            response = FetchEditLogResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
+                    .setEditLog(FastJsonUtils.formatObjectToJsonString(fetchedEditLog))
+                    .build();
+        }
+
+        log.debug("fetch EditLog size {}, response status {}", fetchedEditLog.size(), response.getStatus());
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();
