@@ -4,6 +4,8 @@ import com.sciatta.xdfs.common.fs.EditLog;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
 import com.sciatta.xdfs.namenode.rpc.model.FetchEditLogRequest;
 import com.sciatta.xdfs.namenode.rpc.model.FetchEditLogResponse;
+import com.sciatta.xdfs.namenode.rpc.model.UpdateCheckpointTxidRequest;
+import com.sciatta.xdfs.namenode.rpc.model.UpdateCheckpointTxidResponse;
 import com.sciatta.xdfs.namenode.rpc.service.NameNodeRpcServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.netty.shaded.io.grpc.netty.NegotiationType;
@@ -35,11 +37,12 @@ public class NameNodeRpcClient {
     /**
      * 从主节点同步事务日志
      *
+     * @param syncedTxid 备份节点已同步的事务日志序号
      * @return 事务日志
      */
-    public List<EditLog> fetchEditLog() {
+    public List<EditLog> fetchEditLog(long syncedTxid) {
         FetchEditLogRequest request = FetchEditLogRequest.newBuilder()
-                .setSyncedTxid(1)
+                .setSyncedTxid(syncedTxid)
                 .build();
 
         FetchEditLogResponse response = nameNodeRpcService.fetchEditLog(request);
@@ -47,8 +50,24 @@ public class NameNodeRpcClient {
 
         List<EditLog> editLogList = FastJsonUtils.parseJsonStringToObjects(editLog, EditLog.class);
 
-        log.debug("fetch {} edit log from NameNode", editLogList == null ? 0 : editLogList.size());
+        log.debug("fetch EditLog size {} from NameNode, response status {}",
+                editLogList == null ? 0 : editLogList.size(), response.getStatus());
 
         return editLogList;
+    }
+
+    /**
+     * 向主节点更新检查点事务日志序号
+     *
+     * @param txid 事务日志序号
+     */
+    public void updateCheckpointTxid(long txid) {
+        UpdateCheckpointTxidRequest request = UpdateCheckpointTxidRequest.newBuilder()
+                .setTxid(txid)
+                .build();
+
+        UpdateCheckpointTxidResponse response = this.nameNodeRpcService.updateCheckpointTxid(request);
+
+        log.debug("update checkpoint txid {}, response status {}", txid, response.getStatus());
     }
 }

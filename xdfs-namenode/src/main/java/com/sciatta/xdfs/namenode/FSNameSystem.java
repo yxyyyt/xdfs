@@ -3,12 +3,18 @@ package com.sciatta.xdfs.namenode;
 import com.sciatta.xdfs.common.fs.EditLog;
 import com.sciatta.xdfs.common.fs.EditLogOperateEnum;
 import com.sciatta.xdfs.common.fs.FSDirectory;
-import com.sciatta.xdfs.common.util.ClassUtils;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
+import com.sciatta.xdfs.common.util.PathUtils;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -28,15 +34,12 @@ public class FSNameSystem {
      */
     public static final Integer BACKUP_NODE_FETCH_SIZE = 10;    // TODO fetch可以从备份节点传入，主节点可以界定一个有效范围
 
-    /**
-     * 事务日志保存路径
-     */
-    public static final String EDIT_LOG_FILE_PATH = "D:\\data\\project\\xdfs\\editlog\\";   // TODO to config
-
     private final FSDirectory directory;
 
     @Getter
     private final FSEditLog editlog;
+
+    private final EditLogCleaner editLogCleaner;
 
     /**
      * 当前缓存的一批事务日志
@@ -54,13 +57,17 @@ public class FSNameSystem {
     private String bufferedFlushedTxid;
 
     /**
-     * 当前备份节点已经同步的事务日志序号
+     * 最新检查点的最大事务日志序号
      */
-    private long syncedTxid = 0L;   // TODO 保存到备份节点
+    @Getter
+    @Setter
+    private long checkpointTxid;
 
     public FSNameSystem() {
         this.directory = new FSDirectory();
         this.editlog = new FSEditLog();
+        this.editLogCleaner = new EditLogCleaner(this);
+        this.editLogCleaner.start();
     }
 
     /**
@@ -70,12 +77,14 @@ public class FSNameSystem {
      * @return 是否成功
      */
     public Boolean mkdir(String path) {
-        this.directory.mkdir(path);
         this.editlog.logEdit(txid -> {
+            this.directory.mkdir(txid, path);
+
             EditLog editLog = new EditLog();
             editLog.setTxid(txid);
             editLog.setPath(path);
             editLog.setOperate(EditLogOperateEnum.MKDIR.getOperate());
+
             return editLog;
         });
         return true;
@@ -91,38 +100,39 @@ public class FSNameSystem {
     /**
      * 备份节点向主节点请求拉取事务日志
      *
+     * @param syncedTxid     备份节点已同步的事务日志序号
      * @param fetchedEditLog 拉取到的事务日志
      */
-    public void fetchEditLog(List<EditLog> fetchedEditLog) {
+    public void fetchEditLog(long syncedTxid, List<EditLog> fetchedEditLog) {
         List<String> flushedTxids = this.editlog.getFlushedTxids();
 
         if (flushedTxids.isEmpty()) {
             // 没有磁盘文件，从内存双缓存中拉取
-            fetchFromBufferedEditLog(fetchedEditLog);
+            fetchFromBufferedEditLog(syncedTxid, fetchedEditLog);
         } else {
             // 有磁盘文件，并且之前缓存过
             if (bufferedFlushedTxid != null) {
-                if (existInFlushedFile(bufferedFlushedTxid)) {
+                if (existInFlushedFile(syncedTxid, bufferedFlushedTxid)) {
                     // 缓存的磁盘文件还没有拉取完
-                    fetchFromCurrentBuffer(fetchedEditLog);
+                    fetchFromCurrentBuffer(syncedTxid, fetchedEditLog);
                 } else {
                     // 缓存的磁盘文件已经拉取完，从下一个尝试拉取
                     String nextFlushedTxid = getNextFlushedTxid(flushedTxids, bufferedFlushedTxid);
                     if (nextFlushedTxid != null) {
                         // 从下一个磁盘文件拉取并缓存
-                        fetchFromFlushedFile(nextFlushedTxid, fetchedEditLog);
+                        fetchFromFlushedFile(syncedTxid, nextFlushedTxid, fetchedEditLog);
                     } else {
                         // 没有下一个磁盘文件，从内存双缓存中拉取
-                        fetchFromBufferedEditLog(fetchedEditLog);
+                        fetchFromBufferedEditLog(syncedTxid, fetchedEditLog);
                     }
                 }
             } else {
                 // 有磁盘文件，没有缓存过
                 boolean fechedFromFlushedFile = false;
                 for (String flushedTxid : flushedTxids) {
-                    if (existInFlushedFile(flushedTxid)) {
+                    if (existInFlushedFile(syncedTxid, flushedTxid)) {
                         // 缓存的磁盘文件存在未拉取的数据
-                        fetchFromFlushedFile(flushedTxid, fetchedEditLog);
+                        fetchFromFlushedFile(syncedTxid, flushedTxid, fetchedEditLog);
                         fechedFromFlushedFile = true;
                         break;
                     }
@@ -130,8 +140,49 @@ public class FSNameSystem {
 
                 // 所有磁盘文件的数据全部被拉取完成
                 if (!fechedFromFlushedFile) {
-                    fetchFromBufferedEditLog(fetchedEditLog);
+                    fetchFromBufferedEditLog(syncedTxid, fetchedEditLog);
                 }
+            }
+        }
+    }
+
+    /**
+     * 持久化最新检查点的最大事务日志序号
+     */
+    public void saveCheckpointTxid() {
+        String path = PathUtils.getNameNodeCheckpointTxidPath();
+        RandomAccessFile raf = null;
+        FileOutputStream out = null;
+        FileChannel channel = null;
+
+        try {
+            File file = new File(path);
+            if (file.exists()) {
+                file.delete();  // 删除旧文件
+            }
+
+            ByteBuffer buffer = ByteBuffer.wrap(String.valueOf(checkpointTxid).getBytes());
+
+            raf = new RandomAccessFile(path, "rw");
+            out = new FileOutputStream(raf.getFD());
+            channel = out.getChannel();
+
+            channel.write(buffer);
+            channel.force(false);
+        } catch (Exception e) {
+            log.error("save checkpoint txid {} catch exception {}", checkpointTxid, e.getMessage());
+        } finally {
+            try {
+                if (out != null) {
+                    out.close();
+                }
+                if (raf != null) {
+                    raf.close();
+                }
+                if (channel != null) {
+                    channel.close();
+                }
+            } catch (Exception ignore) {
             }
         }
     }
@@ -139,13 +190,14 @@ public class FSNameSystem {
     /**
      * 从内存双缓存中拉取事务日志
      *
+     * @param syncedTxid     备份节点已同步的事务日志序号
      * @param fetchedEditLog 拉取到的事务日志
      */
-    private void fetchFromBufferedEditLog(List<EditLog> fetchedEditLog) {
+    private void fetchFromBufferedEditLog(long syncedTxid, List<EditLog> fetchedEditLog) {
         long fetchTxid = syncedTxid + 1;
 
         if (fetchTxid <= currentBufferedMaxTxid) {
-            fetchFromCurrentBuffer(fetchedEditLog);
+            fetchFromCurrentBuffer(syncedTxid, fetchedEditLog);
             return;
         }
 
@@ -163,23 +215,23 @@ public class FSNameSystem {
 
         bufferedFlushedTxid = null;
 
-        fetchFromCurrentBuffer(fetchedEditLog);
+        fetchFromCurrentBuffer(syncedTxid, fetchedEditLog);
     }
 
     /**
      * 从指定磁盘文件中拉取事务日志
      *
+     * @param syncedTxid     备份节点已同步的事务日志序号
      * @param flushedTxid    指定磁盘文件事务序号
      * @param fetchedEditLog 拉取到的事务日志
      */
-    private void fetchFromFlushedFile(String flushedTxid, List<EditLog> fetchedEditLog) {
+    private void fetchFromFlushedFile(long syncedTxid, String flushedTxid, List<EditLog> fetchedEditLog) {
         try {
             String[] splitFlushedTxid = flushedTxid.split("_");
             long startTxid = Long.parseLong(splitFlushedTxid[0]);
             long endTxid = Long.parseLong(splitFlushedTxid[1]);
 
-            String currentEditLogFile = EDIT_LOG_FILE_PATH + "edit-"
-                    + startTxid + "-" + endTxid + ".log";
+            String currentEditLogFile = PathUtils.getNameNodeEditLogPath(startTxid, endTxid);
 
             currentBufferedEditLog.clear();
 
@@ -197,7 +249,7 @@ public class FSNameSystem {
 
             bufferedFlushedTxid = flushedTxid;
 
-            fetchFromCurrentBuffer(fetchedEditLog);
+            fetchFromCurrentBuffer(syncedTxid, fetchedEditLog);
         } catch (IOException e) {
             log.error("fetch from flushed file {} catch exception {}", flushedTxid, e.getMessage());
         }
@@ -206,10 +258,11 @@ public class FSNameSystem {
     /**
      * 待拉取的日志是否存在于指定的磁盘文件事务日志序号范围中
      *
+     * @param syncedTxid  备份节点已同步的事务日志序号
      * @param flushedTxid 指定的磁盘文件事务日志序号范围
      * @return true，存在；false，不存在
      */
-    private Boolean existInFlushedFile(String flushedTxid) {
+    private Boolean existInFlushedFile(long syncedTxid, String flushedTxid) {
         String[] splitFlushedTxid = flushedTxid.split("_");
 
         long startTxid = Long.parseLong(splitFlushedTxid[0]);
@@ -240,9 +293,10 @@ public class FSNameSystem {
     /**
      * 从当前缓存中拉取事务日志
      *
+     * @param syncedTxid     备份节点已同步的事务日志序号
      * @param fetchedEditLog 拉取到的事务日志
      */
-    private void fetchFromCurrentBuffer(List<EditLog> fetchedEditLog) {
+    private void fetchFromCurrentBuffer(long syncedTxid, List<EditLog> fetchedEditLog) {
         int fetchCount = 0;
         for (EditLog editLog : currentBufferedEditLog) {
             if (editLog.getTxid() == syncedTxid + 1) {

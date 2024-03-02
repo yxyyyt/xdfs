@@ -14,6 +14,7 @@ message RegisterRequest{
 message RegisterResponse{
   int32 status = 1;
 }
+
 message HeartbeatRequest{
   string ip = 1;
   string hostname = 2;
@@ -23,22 +24,32 @@ message HeartbeatResponse{
   int32 status = 1;
   string commands = 2;
 }
+
 message MkdirRequest{
   string path = 1;
 }
 message MkdirResponse{
   int32 status = 1;
 }
+
 message ShutdownRequest{
   int32 code = 1;
 }
 message ShutdownResponse{
   int32 status = 1;
 }
+
 message FetchEditLogRequest{
   int64 syncedTxid = 1;
 }
 message FetchEditLogResponse{
   int32 status = 1;
   string editLog = 2;
+}
+
+message UpdateCheckpointTxidRequest{
+  int64 txid  = 1;
+}
+message UpdateCheckpointTxidResponse{
+  int32 status = 1;
 }

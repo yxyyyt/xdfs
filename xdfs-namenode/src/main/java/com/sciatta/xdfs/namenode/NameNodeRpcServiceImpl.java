@@ -104,6 +104,7 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
         if (isRunning) {
             this.isRunning = false;
             this.nameSystem.flush();
+            this.nameSystem.saveCheckpointTxid();
             response = ShutdownResponse.newBuilder()
                     .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
                     .build();
@@ -129,7 +130,7 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
                     .setStatus(NameNodeRpcResponseStatus.SHUTDOWN.getValue())
                     .build();
         } else {
-            this.nameSystem.fetchEditLog(fetchedEditLog);
+            this.nameSystem.fetchEditLog(request.getSyncedTxid(), fetchedEditLog);
             response = FetchEditLogResponse.newBuilder()
                     .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
                     .setEditLog(FastJsonUtils.formatObjectToJsonString(fetchedEditLog))
@@ -137,6 +138,27 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
         }
 
         log.debug("fetch EditLog size {}, response status {}", fetchedEditLog.size(), response.getStatus());
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+
+    @Override
+    public void updateCheckpointTxid(UpdateCheckpointTxidRequest request, StreamObserver<UpdateCheckpointTxidResponse> responseObserver) {
+        UpdateCheckpointTxidResponse response;
+
+        if (!isRunning) {
+            response = UpdateCheckpointTxidResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SHUTDOWN.getValue())
+                    .build();
+        } else {
+            this.nameSystem.setCheckpointTxid(request.getTxid());
+            response = UpdateCheckpointTxidResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
+                    .build();
+        }
+
+        log.debug("update checkpoint txid {}, response status {}", request.getTxid(), response.getStatus());
 
         responseObserver.onNext(response);
         responseObserver.onCompleted();

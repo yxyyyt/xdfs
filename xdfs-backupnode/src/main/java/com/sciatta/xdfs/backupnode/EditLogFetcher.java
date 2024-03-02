@@ -19,15 +19,15 @@ public class EditLogFetcher extends Thread {
     private final NameNodeRpcClient nameNodeRpcClient;
     private final FSNameSystem nameSystem;
 
-    public EditLogFetcher(FSNameSystem nameSystem) {
-        this.nameNodeRpcClient = new NameNodeRpcClient();
+    public EditLogFetcher(FSNameSystem nameSystem, NameNodeRpcClient nameNodeRpcClient) {
+        this.nameNodeRpcClient = nameNodeRpcClient;
         this.nameSystem = nameSystem;
     }
 
     @Override
     public void run() {
         while (true) {
-            List<EditLog> editLogList = this.nameNodeRpcClient.fetchEditLog();
+            List<EditLog> editLogList = this.nameNodeRpcClient.fetchEditLog(this.nameSystem.getSyncedTxid());
 
             if (editLogList == null || editLogList.isEmpty()) {
                 log.debug("no fetch any EditLog");
@@ -44,8 +44,7 @@ public class EditLogFetcher extends Thread {
             for (EditLog editLog : editLogList) {
                 log.debug("fetch {}", editLog);
                 if (editLog.getOperate().equals(EditLogOperateEnum.MKDIR.getOperate())) {
-                    String path = editLog.getPath();
-                    this.nameSystem.mkdir(path);
+                    this.nameSystem.mkdir(editLog.getTxid(), editLog.getPath());
                 }
             }
         }

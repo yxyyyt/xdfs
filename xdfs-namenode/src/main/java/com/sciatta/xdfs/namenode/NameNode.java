@@ -9,6 +9,7 @@ public class NameNode {
     private FSNameSystem nameSystem;
     private DataNodeManager dataNodeManager;
     private NameNodeRpcServer nameNodeRpcServer;
+    private FSImageUploadServer imageUploadServer;
 
     /**
      * 初始化
@@ -17,12 +18,14 @@ public class NameNode {
         this.nameSystem = new FSNameSystem();
         this.dataNodeManager = new DataNodeManager();
         this.nameNodeRpcServer = new NameNodeRpcServer(nameSystem, dataNodeManager);
+        this.imageUploadServer = new FSImageUploadServer();
     }
 
     /**
      * 启动
      */
     private void start() throws Exception { // 统一异常处理
+        this.imageUploadServer.start();
         this.nameNodeRpcServer.start();
         this.nameNodeRpcServer.blockUntilShutdown();
     }

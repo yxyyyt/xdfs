@@ -1,7 +1,10 @@
 package com.sciatta.xdfs.common.fs;
 
+import com.sciatta.xdfs.common.util.FastJsonUtils;
+
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Created by Rain on 2024/2/19<br>
@@ -19,17 +22,45 @@ public class FSDirectory {
      */
     private final INodeDirectory dirTree;
 
+    /**
+     * 内存中的文件目录树操作读写锁
+     */
+    private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
+
+    /**
+     * 当前文件目录树对应的最大事务日志序号
+     */
+    private long maxTxid;
+
     public FSDirectory() {
         this.dirTree = new INodeDirectory(ROOT_PATH); // 初始化根目录
     }
 
     /**
+     * 获取内存文件目录树镜像
+     *
+     * @return 文件目录树镜像
+     */
+    public FSImage getFSImage() {
+        readLock();
+        try {
+            String fsimageJson = FastJsonUtils.formatObjectToJsonStringWithClassName(dirTree);
+            return new FSImage(maxTxid, fsimageJson);
+        } finally {
+            readUnlock();
+        }
+    }
+
+    /**
      * 创建层级目录；若当前目录不存在，则创建
      *
+     * @param txid 当前事务日志序号
      * @param path 目录路径
      */
-    public void mkdir(String path) {
-        synchronized (dirTree) {
+    public void mkdir(long txid, String path) {
+        writeLock();
+        try {
+            this.maxTxid = txid;
             String[] paths = path.split(ROOT_PATH);
             INodeDirectory parent = dirTree;
 
@@ -49,6 +80,8 @@ public class FSDirectory {
                 parent.addChild(child);
                 parent = child;
             }
+        } finally {
+            writeUnlock();
         }
     }
 
@@ -78,9 +111,37 @@ public class FSDirectory {
     }
 
     /**
+     * 写锁加锁
+     */
+    private void writeLock() {
+        lock.writeLock().lock();
+    }
+
+    /**
+     * 写锁释放锁
+     */
+    private void writeUnlock() {
+        lock.writeLock().unlock();
+    }
+
+    /**
+     * 读锁加锁
+     */
+    private void readLock() {
+        lock.readLock().lock();
+    }
+
+    /**
+     * 读锁释放锁
+     */
+    private void readUnlock() {
+        lock.readLock().unlock();
+    }
+
+    /**
      * 文件目录树中的一个节点
      */
-    private interface INode {
+    public interface INode {
 
     }
 
@@ -135,5 +196,4 @@ public class FSDirectory {
         }
 
     }
-
 }

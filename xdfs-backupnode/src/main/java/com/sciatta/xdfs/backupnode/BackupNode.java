@@ -7,14 +7,18 @@ package com.sciatta.xdfs.backupnode;
  */
 public class BackupNode {
     private EditLogFetcher editLogFetcher;
+    private FSImageCheckpointer imageCheckpointer;
     private FSNameSystem nameSystem;
+    private NameNodeRpcClient nameNodeRpcClient;
 
     /**
      * 初始化
      */
     private void initialize() {
         this.nameSystem = new FSNameSystem();
-        this.editLogFetcher = new EditLogFetcher(this.nameSystem);
+        this.nameNodeRpcClient = new NameNodeRpcClient();
+        this.editLogFetcher = new EditLogFetcher(this.nameSystem, this.nameNodeRpcClient);
+        this.imageCheckpointer = new FSImageCheckpointer(this.nameSystem, this.nameNodeRpcClient);
     }
 
     /**
@@ -22,6 +26,7 @@ public class BackupNode {
      */
     private void start() {
         this.editLogFetcher.start();
+        this.imageCheckpointer.start();
     }
 
     public static void main(String[] args) throws Exception {

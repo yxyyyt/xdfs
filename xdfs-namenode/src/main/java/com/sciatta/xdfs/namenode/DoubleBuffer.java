@@ -2,6 +2,7 @@ package com.sciatta.xdfs.namenode;
 
 import com.sciatta.xdfs.common.fs.EditLog;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
+import com.sciatta.xdfs.common.util.PathUtils;
 import com.sciatta.xdfs.common.util.StringUtils;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -12,8 +13,8 @@ import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Created by Rain on 2024/2/22<br>
@@ -26,11 +27,6 @@ public class DoubleBuffer {
      * 单缓存容量最大值，单位：字节
      */
     public static final int EDIT_LOG_BUFFER_LIMIT = 25 * 1024;  // TODO to config
-
-    /**
-     * 事务日志保存路径
-     */
-    public static final String EDIT_LOG_FILE_PATH = "D:\\data\\project\\xdfs\\editlog\\";   // TODO to config
 
     /**
      * 写入事务日志缓存
@@ -51,7 +47,7 @@ public class DoubleBuffer {
      * 已经同步成功的事务日志序号范围
      */
     @Getter
-    private final List<String> flushedTxids = new ArrayList<>();
+    private final List<String> flushedTxids = new CopyOnWriteArrayList<>();
 
     /**
      * 写入事务日志
@@ -148,8 +144,7 @@ public class DoubleBuffer {
             byte[] data = buffer.toByteArray();
             ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 
-            String editLogFilePath = EDIT_LOG_FILE_PATH + "edit-"
-                    + startTxid + "-" + endTxid + ".log";
+            String editLogFilePath = PathUtils.getNameNodeEditLogPath(startTxid, endTxid);
 
             try (RandomAccessFile file = new RandomAccessFile(editLogFilePath, "rw");
                  FileOutputStream out = new FileOutputStream(file.getFD());
