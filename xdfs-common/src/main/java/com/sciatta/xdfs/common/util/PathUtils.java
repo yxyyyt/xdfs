@@ -18,11 +18,6 @@ public class PathUtils {
     private static final String NAMENODE_PATH = ROOT_PATH + "namenode\\";
 
     /**
-     * 备份节点路径
-     */
-    private static final String BACKUPNODE_PATH = ROOT_PATH + "backupnode\\";
-
-    /**
      * 主节点事务日志路径
      */
     private static final String NAMENODE_EDITLOG_PATH = NAMENODE_PATH + "editlog\\";
@@ -38,13 +33,32 @@ public class PathUtils {
     private static final String NAMENODE_CHECKPOINT_TXID_PATH = NAMENODE_PATH;
 
     /**
+     * 备份节点路径
+     */
+    private static final String BACKUPNODE_PATH = ROOT_PATH + "backupnode\\";
+
+    /**
      * 备份节点镜像路径
      */
     private static final String BACKUPNODE_IMAGE_PATH = BACKUPNODE_PATH;
 
+    /**
+     * 备份节点检查点信息路径
+     */
+    private static final String BACKUPNODE_CHECKPOINT_INFO_PATH = BACKUPNODE_PATH;
+
 
     private PathUtils() {
 
+    }
+
+    /**
+     * 获取主节点事务日志持久化路径
+     *
+     * @return 主节点事务日志持久化路径
+     */
+    public static String getNameNodeEditLogPath() {
+        return NAMENODE_EDITLOG_PATH;
     }
 
     /**
@@ -56,6 +70,17 @@ public class PathUtils {
      */
     public static String getNameNodeEditLogPath(long startTxid, long endTxid) {
         return NAMENODE_EDITLOG_PATH + "edit-" + startTxid + "-" + endTxid + ".log";
+    }
+
+    /**
+     * 是否是主节点事务日志
+     *
+     * @param path 主节点事务日志
+     * @return true，是；false，不是
+     */
+    public static boolean isNameNodeEditLog(String path) {
+        return path != null && path.startsWith("edit-") && path.endsWith(".log");
+
     }
 
     /**
@@ -84,5 +109,14 @@ public class PathUtils {
      */
     public static String getBackupNodeImagePath(long txid) {
         return BACKUPNODE_IMAGE_PATH + "fsimage-" + txid + ".meta";
+    }
+
+    /**
+     * 获取备份节点检查点信息路径
+     *
+     * @return 备份节点检查点信息路径
+     */
+    public static String getBackupNodeCheckpointInfoPath() {
+        return BACKUPNODE_CHECKPOINT_INFO_PATH + "checkpoint-info.meta";
     }
 }

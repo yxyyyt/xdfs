@@ -10,6 +10,7 @@ public class NameNode {
     private DataNodeManager dataNodeManager;
     private NameNodeRpcServer nameNodeRpcServer;
     private FSImageUploadServer imageUploadServer;
+    private EditLogCleaner editLogCleaner;
 
     /**
      * 初始化
@@ -19,14 +20,16 @@ public class NameNode {
         this.dataNodeManager = new DataNodeManager();
         this.nameNodeRpcServer = new NameNodeRpcServer(nameSystem, dataNodeManager);
         this.imageUploadServer = new FSImageUploadServer();
+        this.editLogCleaner = new EditLogCleaner(this.nameSystem);
     }
 
     /**
      * 启动
      */
     private void start() throws Exception { // 统一异常处理
-        this.imageUploadServer.start();
         this.nameNodeRpcServer.start();
+        this.imageUploadServer.start();
+        this.editLogCleaner.start();
         this.nameNodeRpcServer.blockUntilShutdown();
     }
 

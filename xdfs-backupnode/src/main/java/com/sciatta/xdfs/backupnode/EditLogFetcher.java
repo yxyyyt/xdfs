@@ -19,15 +19,24 @@ public class EditLogFetcher extends Thread {
     private final NameNodeRpcClient nameNodeRpcClient;
     private final FSNameSystem nameSystem;
 
+    private long syncedTxid;
+
     public EditLogFetcher(FSNameSystem nameSystem, NameNodeRpcClient nameNodeRpcClient) {
         this.nameNodeRpcClient = nameNodeRpcClient;
         this.nameSystem = nameSystem;
+        this.syncedTxid = this.nameSystem.getSyncedTxid();
     }
 
     @Override
     public void run() {
         while (true) {
-            List<EditLog> editLogList = this.nameNodeRpcClient.fetchEditLog(this.nameSystem.getSyncedTxid());
+            if (!this.nameSystem.isRecover()) {
+                log.debug("NameSystem is recovering");
+                ConcurrentUtils.silentSleepToSeconds(1);
+                continue;
+            }
+
+            List<EditLog> editLogList = this.nameNodeRpcClient.fetchEditLog(this.syncedTxid);
 
             if (editLogList == null || editLogList.isEmpty()) {
                 log.debug("no fetch any EditLog");
@@ -45,6 +54,7 @@ public class EditLogFetcher extends Thread {
                 log.debug("fetch {}", editLog);
                 if (editLog.getOperate().equals(EditLogOperateEnum.MKDIR.getOperate())) {
                     this.nameSystem.mkdir(editLog.getTxid(), editLog.getPath());
+                    this.syncedTxid = editLog.getTxid();
                 }
             }
         }

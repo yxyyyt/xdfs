@@ -5,21 +5,18 @@ import com.sciatta.xdfs.common.fs.EditLogOperateEnum;
 import com.sciatta.xdfs.common.fs.FSDirectory;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
 import com.sciatta.xdfs.common.util.PathUtils;
+import com.sciatta.xdfs.common.util.SystemUtils;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 /**
  * Created by Rain on 2024/2/19<br>
@@ -38,8 +35,6 @@ public class FSNameSystem {
 
     @Getter
     private final FSEditLog editlog;
-
-    private final EditLogCleaner editLogCleaner;
 
     /**
      * 当前缓存的一批事务日志
@@ -66,8 +61,7 @@ public class FSNameSystem {
     public FSNameSystem() {
         this.directory = new FSDirectory();
         this.editlog = new FSEditLog();
-        this.editLogCleaner = new EditLogCleaner(this);
-        this.editLogCleaner.start();
+        recoverNameSystem();
     }
 
     /**
@@ -306,6 +300,139 @@ public class FSNameSystem {
             }
             if (fetchCount == BACKUP_NODE_FETCH_SIZE) {
                 break;
+            }
+        }
+    }
+
+    /**
+     * 恢复元数据
+     */
+    private void recoverNameSystem() {
+        try {
+            loadFSImage();
+            loadCheckpointTxid();
+            loadEditLog();
+        } catch (Exception e) {
+            log.error("recover NameSystem catch exception {}", e.getMessage());
+            SystemUtils.normalExit();
+        }
+    }
+
+    /**
+     * 加载镜像
+     *
+     * @throws IOException IO异常
+     */
+    private void loadFSImage() throws IOException {
+        FileInputStream in = null;
+        FileChannel channel = null;
+        try {
+            String path = PathUtils.getNameNodeImagePath();
+            File file = new File(path);
+            if (!file.exists()) {
+                log.debug("load FSImage but not exist");
+                return;
+            }
+
+            in = new FileInputStream(path);
+            channel = in.getChannel();
+
+            ByteBuffer buffer = ByteBuffer.allocate(1024 * 1024);   // TODO 收到镜像后，缓存大小；然后在这里分配
+            int count = channel.read(buffer);
+
+            buffer.flip();
+            String fsimageJson = new String(buffer.array(), 0, count);
+            FSDirectory.INodeDirectory dirTree = FastJsonUtils.parseJsonStringToObject(fsimageJson,
+                    FSDirectory.INodeDirectory.class);
+            directory.setDirTree(dirTree);
+            log.debug("load FSImage success, size {}", fsimageJson.getBytes().length);
+        } finally {
+            if (in != null) {
+                in.close();
+            }
+            if (channel != null) {
+                channel.close();
+            }
+        }
+    }
+
+    /**
+     * 加载镜像的检查点事务日志序号
+     *
+     * @throws IOException IO异常
+     */
+    private void loadCheckpointTxid() throws IOException {
+        FileInputStream in = null;
+        FileChannel channel = null;
+        try {
+            String path = PathUtils.getNameNodeCheckpointTxidPath();
+            File file = new File(path);
+            if (!file.exists()) {
+                log.debug("load checkpoint txid but not exist");
+                return;
+            }
+
+            in = new FileInputStream(path);
+            channel = in.getChannel();
+
+            ByteBuffer buffer = ByteBuffer.allocate(1024); // TODO 大小 持久化
+            int count = channel.read(buffer);
+
+            buffer.flip();
+            this.checkpointTxid = Long.parseLong(new String(buffer.array(), 0, count));
+            log.debug("load checkpoint txid {} success", this.checkpointTxid);
+        } finally {
+            if (in != null) {
+                in.close();
+            }
+            if (channel != null) {
+                channel.close();
+            }
+        }
+    }
+
+    /**
+     * 回放事务日志并在内存目录树中重放
+     *
+     * @throws IOException IO异常
+     */
+    private void loadEditLog() throws IOException {
+        File dir = new File(PathUtils.getNameNodeEditLogPath());
+
+        List<File> files = new ArrayList<>(Arrays.asList(dir.listFiles()));
+
+        files.removeIf(file -> !PathUtils.isNameNodeEditLog(file.getName()));
+
+        files.sort((o1, o2) -> {
+            Integer o1StartTxid = Integer.valueOf(o1.getName().split("-")[1]);
+            Integer o2StartTxid = Integer.valueOf(o2.getName().split("-")[1]);
+            return o1StartTxid - o2StartTxid;
+        });
+
+        if (files.isEmpty()) {
+            log.debug("load EditLog but not exist");
+            return;
+        }
+
+        for (File file : files) {
+            String[] splitedName = file.getName().split("-");
+            long startTxid = Long.parseLong(splitedName[1]);
+            long endTxid = Long.parseLong(splitedName[2].split("[.]")[0]);
+
+            if (endTxid > checkpointTxid) {
+                String currentEditsLogFile = PathUtils.getNameNodeEditLogPath(startTxid, endTxid);
+                List<String> editLogList = Files.readAllLines(Paths.get(currentEditsLogFile), StandardCharsets.UTF_8);
+                for (String editLogJson : editLogList) {
+                    EditLog editLog = FastJsonUtils.parseJsonStringToObject(editLogJson, EditLog.class);
+                    if (editLog != null && editLog.getTxid() > checkpointTxid) {
+                        String op = editLog.getOperate();
+                        // 回放事务日志
+                        if (op.equals(EditLogOperateEnum.MKDIR.getOperate())) {
+                            directory.mkdir(editLog.getTxid(), editLog.getPath());
+                        }
+                        log.debug("load {} and rewind EditLog {}", currentEditsLogFile, editLog.getTxid());
+                    }
+                }
             }
         }
     }

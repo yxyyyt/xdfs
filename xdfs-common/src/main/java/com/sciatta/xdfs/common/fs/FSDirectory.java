@@ -1,6 +1,7 @@
 package com.sciatta.xdfs.common.fs;
 
 import com.sciatta.xdfs.common.util.FastJsonUtils;
+import lombok.Setter;
 
 import java.util.LinkedList;
 import java.util.List;
@@ -20,7 +21,8 @@ public class FSDirectory {
     /**
      * 内存中的文件目录树
      */
-    private final INodeDirectory dirTree;
+    @Setter
+    private INodeDirectory dirTree;
 
     /**
      * 内存中的文件目录树操作读写锁
@@ -30,6 +32,7 @@ public class FSDirectory {
     /**
      * 当前文件目录树对应的最大事务日志序号
      */
+    @Setter
     private long maxTxid;
 
     public FSDirectory() {
