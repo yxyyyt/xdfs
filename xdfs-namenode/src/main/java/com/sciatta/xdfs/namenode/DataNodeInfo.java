@@ -1,10 +1,15 @@
 package com.sciatta.xdfs.namenode;
 
+import lombok.Getter;
+import lombok.Setter;
+
 /**
  * Created by Rain on 2024/2/19<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
  * 数据节点信息
  */
+@Setter
+@Getter
 public class DataNodeInfo {
     /**
      * IP地址
@@ -26,27 +31,4 @@ public class DataNodeInfo {
         this.hostname = hostname;
     }
 
-    public String getIp() {
-        return ip;
-    }
-
-    public void setIp(String ip) {
-        this.ip = ip;
-    }
-
-    public String getHostname() {
-        return hostname;
-    }
-
-    public void setHostname(String hostname) {
-        this.hostname = hostname;
-    }
-
-    public long getLatestHeartbeatTime() {
-        return latestHeartbeatTime;
-    }
-
-    public void setLatestHeartbeatTime(long latestHeartbeatTime) {
-        this.latestHeartbeatTime = latestHeartbeatTime;
-    }
 }

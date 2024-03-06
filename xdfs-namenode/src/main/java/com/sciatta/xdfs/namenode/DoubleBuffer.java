@@ -144,7 +144,7 @@ public class DoubleBuffer {
             byte[] data = buffer.toByteArray();
             ByteBuffer dataBuffer = ByteBuffer.wrap(data);
 
-            String editLogFilePath = PathUtils.getNameNodeEditLogPath(startTxid, endTxid);
+            String editLogFilePath = PathUtils.getNameNodeEditLogFile(startTxid, endTxid);
 
             try (RandomAccessFile file = new RandomAccessFile(editLogFilePath, "rw");
                  FileOutputStream out = new FileOutputStream(file.getFD());

@@ -1,6 +1,7 @@
 package com.sciatta.xdfs.namenode;
 
 import com.sciatta.xdfs.common.fs.EditLog;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
@@ -16,6 +17,7 @@ public class FSEditLog {
     /**
      * 当前事务日志序号
      */
+    @Setter
     private long txidSeq = 0L;
 
     /**

@@ -19,12 +19,16 @@ public class EditLogFetcher extends Thread {
     private final NameNodeRpcClient nameNodeRpcClient;
     private final FSNameSystem nameSystem;
 
+    /**
+     * 已同步事务日志序号
+     */
     private long syncedTxid;
 
     public EditLogFetcher(FSNameSystem nameSystem, NameNodeRpcClient nameNodeRpcClient) {
         this.nameNodeRpcClient = nameNodeRpcClient;
         this.nameSystem = nameSystem;
-        this.syncedTxid = this.nameSystem.getSyncedTxid();
+        // 初始化上一次生成镜像时的最大事务日志序号
+        this.syncedTxid = this.nameSystem.getCheckpointTxid();
     }
 
     @Override
@@ -36,7 +40,7 @@ public class EditLogFetcher extends Thread {
                 continue;
             }
 
-            List<EditLog> editLogList = this.nameNodeRpcClient.fetchEditLog(this.syncedTxid);
+            List<EditLog> editLogList = this.nameNodeRpcClient.fetchEditLog(syncedTxid);
 
             if (editLogList == null || editLogList.isEmpty()) {
                 log.debug("no fetch any EditLog");
@@ -52,10 +56,12 @@ public class EditLogFetcher extends Thread {
 
             for (EditLog editLog : editLogList) {
                 log.debug("fetch {}", editLog);
+
                 if (editLog.getOperate().equals(EditLogOperateEnum.MKDIR.getOperate())) {
                     this.nameSystem.mkdir(editLog.getTxid(), editLog.getPath());
-                    this.syncedTxid = editLog.getTxid();
                 }
+
+                this.syncedTxid = editLog.getTxid();
             }
         }
     }

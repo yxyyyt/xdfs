@@ -1,5 +1,6 @@
 package com.sciatta.xdfs.common.util;
 
+import com.sciatta.xdfs.common.fs.FSDirectory;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.junit.Test;
@@ -14,6 +15,19 @@ import static org.junit.Assert.*;
  * FastJsonUtilsTests
  */
 public class FastJsonUtilsTests {
+
+    @Test
+    public void testJsonINodeDirectory() {
+        FSDirectory directory = new FSDirectory();
+        directory.mkdir(1, "/a/b");
+        directory.mkdir(2, "/a/c");
+
+        String fsimageJson = directory.getFSImage().getFsimage();
+        System.out.println(fsimageJson);
+
+        FSDirectory.INode iNodeDirectory = FastJsonUtils.parseJsonStringToObject(fsimageJson, FSDirectory.INode.class);
+        assertNotNull(iNodeDirectory);
+    }
 
     @Test
     public void testFormatObjectToJsonString() {

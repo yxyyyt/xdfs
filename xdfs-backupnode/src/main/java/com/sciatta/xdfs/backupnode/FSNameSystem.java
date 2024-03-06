@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
@@ -27,11 +26,11 @@ public class FSNameSystem {
     private final FSDirectory directory;
 
     /**
-     * 上一次同步的事务日志序号
+     * 上一次检查点事务日志序号
      */
     @Getter
     @Setter
-    private long syncedTxid;
+    private long checkpointTxid;
 
     /**
      * 上一次检查点时间
@@ -94,7 +93,7 @@ public class FSNameSystem {
         FileInputStream in = null;
         FileChannel channel = null;
         try {
-            String path = PathUtils.getBackupNodeImagePath(this.syncedTxid);
+            String path = PathUtils.getBackupNodeImageFile(this.checkpointTxid);
             File file = new File(path);
             if (!file.exists()) {
                 log.debug("load FSImage but not exist");
@@ -108,13 +107,14 @@ public class FSNameSystem {
             int count = channel.read(buffer);
 
             buffer.flip();
+
             String fsimageJson = new String(buffer.array(), 0, count);
             FSDirectory.INodeDirectory iNodeDirectory = FastJsonUtils.parseJsonStringToObject(fsimageJson, FSDirectory.INodeDirectory.class);
 
             this.directory.setDirTree(iNodeDirectory);
-            this.directory.setMaxTxid(this.syncedTxid);
+            this.directory.setMaxTxid(this.checkpointTxid);
 
-            log.debug("load FSImage success, maxTxid {}", this.syncedTxid);
+            log.debug("load FSImage success, maxTxid {}", this.checkpointTxid);
         } finally {
             if (in != null) {
                 in.close();
@@ -134,7 +134,7 @@ public class FSNameSystem {
         FileInputStream in = null;
         FileChannel channel = null;
         try {
-            String path = PathUtils.getBackupNodeCheckpointInfoPath();
+            String path = PathUtils.getBackupNodeCheckpointInfoFile();
 
             File file = new File(path);
             if (!file.exists()) {
@@ -151,12 +151,11 @@ public class FSNameSystem {
             buffer.flip();
 
             String checkpointInfo = new String(buffer.array(), 0, count);
-            long checkpointTime = Long.parseLong(checkpointInfo.split("_")[0]);
-            long syncedTxid = Long.parseLong(checkpointInfo.split("_")[1]);
 
-            this.checkpointTime = checkpointTime;
-            this.syncedTxid = syncedTxid;
-            log.debug("load checkpoint time {}, synced txid {}", this.checkpointTime, this.syncedTxid);
+            this.checkpointTime = Long.parseLong(checkpointInfo.split("_")[0]);
+            this.checkpointTxid = Long.parseLong(checkpointInfo.split("_")[1]);
+
+            log.debug("load checkpoint time {}, txid {}", this.checkpointTime, this.checkpointTxid);
         } finally {
             if (in != null) {
                 in.close();

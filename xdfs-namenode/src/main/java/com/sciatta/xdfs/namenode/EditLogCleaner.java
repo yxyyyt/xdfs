@@ -36,7 +36,7 @@ public class EditLogCleaner extends Thread {
                     long endTxid = Long.parseLong(flushedTxid.split("_")[1]);
 
                     if (checkpointTxid >= endTxid) {
-                        String path = PathUtils.getNameNodeEditLogPath(startTxid, endTxid);
+                        String path = PathUtils.getNameNodeEditLogFile(startTxid, endTxid);
                         File file = new File(path);
                         if (file.exists()) {
                             boolean delete = file.delete();

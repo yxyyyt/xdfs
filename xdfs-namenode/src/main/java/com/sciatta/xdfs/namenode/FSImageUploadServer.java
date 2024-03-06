@@ -109,7 +109,7 @@ public class FSImageUploadServer extends Thread {
     private void handleReadableRequest(SelectionKey key) throws IOException {
         SocketChannel channel = null;
 
-        String fsimageFilePath = PathUtils.getNameNodeImagePath();
+        String fsimageFilePath = PathUtils.getNameNodeImageFile();
 
         RandomAccessFile fsimageImageRAF = null;
         FileOutputStream fsimageOut = null;

@@ -62,15 +62,15 @@ public class FSImageCheckpointer extends Thread {
         removeLastFSImageFile();
         writeFSImageFile(fsimage);
         uploadFSImageFile(fsimage);
-        updateCheckpointTxid(fsimage);
-        saveCheckpointInfo(fsimage);
+        uploadCheckpointTxid(fsimage);
+        saveCheckpointInfo();
     }
 
     /**
      * 删除最近一个镜像
      */
     private void removeLastFSImageFile() {
-        File file = new File(PathUtils.getBackupNodeImagePath(this.nameSystem.getSyncedTxid()));
+        File file = new File(PathUtils.getBackupNodeImageFile(this.nameSystem.getCheckpointTxid()));
         if (file.exists()) {
             file.delete();
         }
@@ -85,10 +85,7 @@ public class FSImageCheckpointer extends Thread {
     private void writeFSImageFile(FSImage fsimage) throws IOException {
         ByteBuffer buffer = ByteBuffer.wrap(fsimage.getFsimage().getBytes());
 
-        String fsimageFilePath = PathUtils.getBackupNodeImagePath(fsimage.getMaxTxid());
-
-        this.nameSystem.setSyncedTxid(fsimage.getMaxTxid());
-        this.nameSystem.setCheckpointTime(DateTimeUtils.currentTimeMillis());
+        String fsimageFilePath = PathUtils.getBackupNodeImageFile(fsimage.getMaxTxid());
 
         try (RandomAccessFile file = new RandomAccessFile(fsimageFilePath, "rw");
              FileOutputStream out = new FileOutputStream(file.getFD());
@@ -96,6 +93,9 @@ public class FSImageCheckpointer extends Thread {
             channel.write(buffer);
             channel.force(false);
         }
+
+        this.nameSystem.setCheckpointTxid(fsimage.getMaxTxid());
+        this.nameSystem.setCheckpointTime(DateTimeUtils.currentTimeMillis());
     }
 
     /**
@@ -110,21 +110,19 @@ public class FSImageCheckpointer extends Thread {
 
 
     /**
-     * 向主节点更新检查点事务日志序号
+     * 上传镜像的最大事务序号到主节点
      *
      * @param fsimage 镜像
      */
-    private void updateCheckpointTxid(FSImage fsimage) {
+    private void uploadCheckpointTxid(FSImage fsimage) {
         this.nameNodeRpcClient.updateCheckpointTxid(fsimage.getMaxTxid());
     }
 
     /**
      * 保存检查点信息
-     *
-     * @param fsimage 镜像
      */
-    private void saveCheckpointInfo(FSImage fsimage) throws IOException {
-        String path = PathUtils.getBackupNodeCheckpointInfoPath();
+    private void saveCheckpointInfo() throws IOException {
+        String path = PathUtils.getBackupNodeCheckpointInfoFile();
 
         RandomAccessFile raf = null;
         FileOutputStream out = null;
@@ -136,7 +134,7 @@ public class FSImageCheckpointer extends Thread {
                 file.delete();
             }
 
-            String checkpointInfo = this.nameSystem.getCheckpointTime() + "_" + this.nameSystem.getSyncedTxid();
+            String checkpointInfo = this.nameSystem.getCheckpointTime() + "_" + this.nameSystem.getCheckpointTxid();
 
             ByteBuffer buffer = ByteBuffer.wrap(checkpointInfo.getBytes());
 

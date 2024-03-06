@@ -144,7 +144,7 @@ public class FSNameSystem {
      * 持久化最新检查点的最大事务日志序号
      */
     public void saveCheckpointTxid() {
-        String path = PathUtils.getNameNodeCheckpointTxidPath();
+        String path = PathUtils.getNameNodeCheckpointTxidFile();
         RandomAccessFile raf = null;
         FileOutputStream out = null;
         FileChannel channel = null;
@@ -225,7 +225,7 @@ public class FSNameSystem {
             long startTxid = Long.parseLong(splitFlushedTxid[0]);
             long endTxid = Long.parseLong(splitFlushedTxid[1]);
 
-            String currentEditLogFile = PathUtils.getNameNodeEditLogPath(startTxid, endTxid);
+            String currentEditLogFile = PathUtils.getNameNodeEditLogFile(startTxid, endTxid);
 
             currentBufferedEditLog.clear();
 
@@ -327,7 +327,7 @@ public class FSNameSystem {
         FileInputStream in = null;
         FileChannel channel = null;
         try {
-            String path = PathUtils.getNameNodeImagePath();
+            String path = PathUtils.getNameNodeImageFile();
             File file = new File(path);
             if (!file.exists()) {
                 log.debug("load FSImage but not exist");
@@ -365,7 +365,7 @@ public class FSNameSystem {
         FileInputStream in = null;
         FileChannel channel = null;
         try {
-            String path = PathUtils.getNameNodeCheckpointTxidPath();
+            String path = PathUtils.getNameNodeCheckpointTxidFile();
             File file = new File(path);
             if (!file.exists()) {
                 log.debug("load checkpoint txid but not exist");
@@ -380,6 +380,7 @@ public class FSNameSystem {
 
             buffer.flip();
             this.checkpointTxid = Long.parseLong(new String(buffer.array(), 0, count));
+            this.directory.setMaxTxid(this.checkpointTxid);
             log.debug("load checkpoint txid {} success", this.checkpointTxid);
         } finally {
             if (in != null) {
@@ -392,7 +393,7 @@ public class FSNameSystem {
     }
 
     /**
-     * 回放事务日志并在内存目录树中重放
+     * 加载事务日志并重放，恢复文件目录树和当前事务日志序号
      *
      * @throws IOException IO异常
      */
@@ -401,7 +402,7 @@ public class FSNameSystem {
 
         List<File> files = new ArrayList<>(Arrays.asList(dir.listFiles()));
 
-        files.removeIf(file -> !PathUtils.isNameNodeEditLog(file.getName()));
+        files.removeIf(file -> !PathUtils.isNameNodeEditLogFile(file.getName()));
 
         files.sort((o1, o2) -> {
             Integer o1StartTxid = Integer.valueOf(o1.getName().split("-")[1]);
@@ -419,12 +420,12 @@ public class FSNameSystem {
             long startTxid = Long.parseLong(splitedName[1]);
             long endTxid = Long.parseLong(splitedName[2].split("[.]")[0]);
 
-            if (endTxid > checkpointTxid) {
-                String currentEditsLogFile = PathUtils.getNameNodeEditLogPath(startTxid, endTxid);
+            if (endTxid > this.directory.getMaxTxid()) {
+                String currentEditsLogFile = PathUtils.getNameNodeEditLogFile(startTxid, endTxid);
                 List<String> editLogList = Files.readAllLines(Paths.get(currentEditsLogFile), StandardCharsets.UTF_8);
                 for (String editLogJson : editLogList) {
                     EditLog editLog = FastJsonUtils.parseJsonStringToObject(editLogJson, EditLog.class);
-                    if (editLog != null && editLog.getTxid() > checkpointTxid) {
+                    if (editLog != null && editLog.getTxid() > this.directory.getMaxTxid()) {
                         String op = editLog.getOperate();
                         // 回放事务日志
                         if (op.equals(EditLogOperateEnum.MKDIR.getOperate())) {
@@ -435,5 +436,8 @@ public class FSNameSystem {
                 }
             }
         }
+
+        // 恢复当前事务日志序号
+        this.editlog.setTxidSeq(this.directory.getMaxTxid());
     }
 }

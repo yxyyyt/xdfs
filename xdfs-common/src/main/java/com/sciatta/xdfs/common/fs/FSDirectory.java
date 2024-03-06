@@ -1,6 +1,9 @@
 package com.sciatta.xdfs.common.fs;
 
 import com.sciatta.xdfs.common.util.FastJsonUtils;
+import lombok.Data;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.util.LinkedList;
@@ -33,6 +36,7 @@ public class FSDirectory {
      * 当前文件目录树对应的最大事务日志序号
      */
     @Setter
+    @Getter
     private long maxTxid;
 
     public FSDirectory() {
@@ -151,8 +155,9 @@ public class FSDirectory {
     /**
      * 文件目录树中的一个目录
      */
+    @Data
+    @NoArgsConstructor
     public static class INodeDirectory implements INode {
-
         private String path;
         private List<INode> children;
 
@@ -164,39 +169,14 @@ public class FSDirectory {
         public void addChild(INode inode) {
             this.children.add(inode);
         }
-
-        public String getPath() {
-            return path;
-        }
-
-        public void setPath(String path) {
-            this.path = path;
-        }
-
-        public List<INode> getChildren() {
-            return children;
-        }
-
-        public void setChildren(List<INode> children) {
-            this.children = children;
-        }
-
     }
 
     /**
      * 文件目录树中的一个文件
      */
+    @Data
+    @NoArgsConstructor
     public static class INodeFile implements INode {
-
         private String name;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
     }
 }
