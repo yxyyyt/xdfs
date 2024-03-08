@@ -220,4 +220,33 @@ public class PathUtils {
         }
         return null;
     }
+
+    /**
+     * 从指定路径获取文件名
+     *
+     * @param path 指定路径
+     * @return 文件名
+     */
+    public static String getFileName(String path) {
+        if (StringUtils.isBlank(path)) return null;
+
+        int i = path.lastIndexOf(StringUtils.PATH_SEPARATOR);
+        return path.substring(i + 1);
+    }
+
+    /**
+     * 从指定路径获取文件路径
+     *
+     * @param path 指定路径
+     * @return 文件路径
+     */
+    public static String getFilePath(String path) {
+        if (StringUtils.isBlank(path)) return null;
+
+        int i = path.lastIndexOf(StringUtils.PATH_SEPARATOR);
+
+        if (i == -1) return "";
+
+        return path.substring(0, i);
+    }
 }

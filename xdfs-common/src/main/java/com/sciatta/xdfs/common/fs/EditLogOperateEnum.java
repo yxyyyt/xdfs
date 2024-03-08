@@ -9,7 +9,9 @@ import lombok.Getter;
  */
 @Getter
 public enum EditLogOperateEnum {
-    MKDIR("MKDIR");
+    MKDIR("MKDIR"),
+
+    TOUCH("TOUCH");
 
     private final String operate;
 

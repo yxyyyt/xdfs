@@ -59,6 +59,13 @@ public class FSEditLog {
             localTxid.set(txid); // 本地线程副本
 
             EditLog editLog = editLogFactory.create(txid);
+
+            if (editLog == null) {
+                txidSeq--;
+                localTxid.remove();
+                return;
+            }
+
             try {
                 doubleBuffer.write(editLog);
             } catch (IOException e) {

@@ -1,7 +1,7 @@
 package com.sciatta.xdfs.backupnode;
 
-import com.sciatta.xdfs.common.fs.FSDirectory;
 import com.sciatta.xdfs.common.fs.FSImage;
+import com.sciatta.xdfs.common.fs.INodeDirectory;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
 import com.sciatta.xdfs.common.util.PathUtils;
 import com.sciatta.xdfs.common.util.SystemUtils;
@@ -23,7 +23,7 @@ import java.nio.channels.FileChannel;
 @Slf4j
 public class FSNameSystem {
 
-    private final FSDirectory directory;
+    private final BackupNodeDirectory directory;
 
     /**
      * 上一次检查点事务日志序号
@@ -46,7 +46,7 @@ public class FSNameSystem {
     private volatile boolean recover = false;
 
     public FSNameSystem() {
-        this.directory = new FSDirectory();
+        this.directory = new BackupNodeDirectory();
         recoverNameSystem();
     }
 
@@ -109,7 +109,7 @@ public class FSNameSystem {
             buffer.flip();
 
             String fsimageJson = new String(buffer.array(), 0, count);
-            FSDirectory.INodeDirectory iNodeDirectory = FastJsonUtils.parseJsonStringToObject(fsimageJson, FSDirectory.INodeDirectory.class);
+            INodeDirectory iNodeDirectory = FastJsonUtils.parseJsonStringToObject(fsimageJson, INodeDirectory.class);
 
             this.directory.setDirTree(iNodeDirectory);
             this.directory.setMaxTxid(this.checkpointTxid);

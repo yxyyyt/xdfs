@@ -296,4 +296,44 @@ public class StringUtilsTests {
         assertEquals("abc", ans);
     }
 
+    @Test
+    public void testGetFileName() {
+        String path = "";
+
+        String ans = PathUtils.getFileName(path);
+        assertNull(ans);
+
+        path = "abc.txt";
+        ans = PathUtils.getFileName(path);
+        assertEquals("abc.txt", ans);
+
+        path = "/root/app/abc.txt";
+        ans = PathUtils.getFileName(path);
+        assertEquals("abc.txt", ans);
+
+        path = "root/app/abc.txt";
+        ans = PathUtils.getFileName(path);
+        assertEquals("abc.txt", ans);
+    }
+
+    @Test
+    public void testGetFilePath() {
+        String path = "";
+
+        String ans = PathUtils.getFilePath(path);
+        assertNull(ans);
+
+        path = "abc.txt";
+        ans = PathUtils.getFilePath(path);
+        assertEquals("", ans);
+
+        path = "/root/app/abc.txt";
+        ans = PathUtils.getFilePath(path);
+        assertEquals("/root/app", ans);
+
+        path = "root/app/abc.txt";
+        ans = PathUtils.getFilePath(path);
+        assertEquals("root/app", ans);
+    }
+
 }

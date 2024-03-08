@@ -1,21 +1,17 @@
 package com.sciatta.xdfs.common.fs;
 
-import com.sciatta.xdfs.common.util.FastJsonUtils;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import com.sciatta.xdfs.common.util.PathUtils;
+import com.sciatta.xdfs.common.util.StringUtils;
 import lombok.Setter;
 
-import java.util.LinkedList;
-import java.util.List;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * Created by Rain on 2024/2/19<br>
  * All Rights Reserved(C) 2017 - 2024 SCIATTA <br> <p/>
- * 管理内存中的文件目录树的核心组件
+ * 管理内存中的文件目录树的核心组件，非线程安全，线程安全由子类保证
  */
-public class FSDirectory {
+public abstract class FSDirectory {
     /**
      * 根目录
      */
@@ -25,71 +21,84 @@ public class FSDirectory {
      * 内存中的文件目录树
      */
     @Setter
-    private INodeDirectory dirTree;
+    protected INodeDirectory dirTree;
 
     /**
      * 内存中的文件目录树操作读写锁
      */
     private final ReentrantReadWriteLock lock = new ReentrantReadWriteLock();
 
-    /**
-     * 当前文件目录树对应的最大事务日志序号
-     */
-    @Setter
-    @Getter
-    private long maxTxid;
-
     public FSDirectory() {
         this.dirTree = new INodeDirectory(ROOT_PATH); // 初始化根目录
     }
 
     /**
-     * 获取内存文件目录树镜像
+     * 创建层级目录；若当前目录不存在，则创建
      *
-     * @return 文件目录树镜像
+     * @param path 目录路径
+     * @return 最后一级目录
      */
-    public FSImage getFSImage() {
-        readLock();
-        try {
-            String fsimageJson = FastJsonUtils.formatObjectToJsonStringWithClassName(dirTree);
-            return new FSImage(maxTxid, fsimageJson);
-        } finally {
-            readUnlock();
+    protected INodeDirectory mkdir(String path) {
+        String[] paths = path.split(ROOT_PATH);
+        INodeDirectory parent = dirTree;
+
+        for (String splitPath : paths) {
+            if (splitPath.trim().isEmpty()) {
+                continue;
+            }
+
+            INodeDirectory dir = findDirectory(parent, splitPath);
+            if (dir != null) {
+                parent = dir;
+                continue;
+            }
+
+            // 子目录不存在
+            INodeDirectory child = new INodeDirectory(splitPath);
+            parent.addChild(child);
+            parent = child;
         }
+        return parent;
     }
 
     /**
-     * 创建层级目录；若当前目录不存在，则创建
+     * 创建文件；如果文件所属的层级目录不存在，则先创建
      *
-     * @param txid 当前事务日志序号
-     * @param path 目录路径
+     * @param path 文件路径
+     * @return true，创建成功；false，创建失败
      */
-    public void mkdir(long txid, String path) {
-        writeLock();
-        try {
-            this.maxTxid = txid;
-            String[] paths = path.split(ROOT_PATH);
-            INodeDirectory parent = dirTree;
+    protected boolean touch(String path) { // TODO  区分创建失败，重复
+        // 创建目录
+        String filePath = PathUtils.getFilePath(path);
+        String filename = PathUtils.getFileName(path);
 
-            for (String splitPath : paths) {
-                if (splitPath.trim().isEmpty()) {
-                    continue;
+        if (filePath == null) return false; // 路径可以为空，如果为空时，则创建文件到根路径
+
+        if (StringUtils.isBlank(filename)) return false;
+
+        INodeDirectory currentDir = mkdir(filePath);
+        if (isFileExist(currentDir, filename)) return false;
+
+        return currentDir.getChildren().add(new INodeFile(filename));
+    }
+
+    /**
+     * 指定目录下文件是否存在
+     *
+     * @param directory 指定目录
+     * @param filename  文件名
+     * @return true，存在；false，不存在
+     */
+    private boolean isFileExist(INodeDirectory directory, String filename) {
+        if (directory != null && !directory.getChildren().isEmpty()) {
+            for (INode node : directory.getChildren()) {
+                if (node instanceof INodeFile && ((INodeFile) node).getName().equals(filename)) {
+                    return true;
                 }
-
-                INodeDirectory dir = findDirectory(parent, splitPath);
-                if (dir != null) {
-                    parent = dir;
-                    continue;
-                }
-
-                // 子目录不存在
-                INodeDirectory child = new INodeDirectory(splitPath);
-                parent.addChild(child);
-                parent = child;
             }
-        } finally {
-            writeUnlock();
         }
+
+        return false;
     }
 
     /**
@@ -120,63 +129,28 @@ public class FSDirectory {
     /**
      * 写锁加锁
      */
-    private void writeLock() {
+    protected void writeLock() {
         lock.writeLock().lock();
     }
 
     /**
      * 写锁释放锁
      */
-    private void writeUnlock() {
+    protected void writeUnlock() {
         lock.writeLock().unlock();
     }
 
     /**
      * 读锁加锁
      */
-    private void readLock() {
+    protected void readLock() {
         lock.readLock().lock();
     }
 
     /**
      * 读锁释放锁
      */
-    private void readUnlock() {
+    protected void readUnlock() {
         lock.readLock().unlock();
-    }
-
-    /**
-     * 文件目录树中的一个节点
-     */
-    public interface INode {
-
-    }
-
-    /**
-     * 文件目录树中的一个目录
-     */
-    @Data
-    @NoArgsConstructor
-    public static class INodeDirectory implements INode {
-        private String path;
-        private List<INode> children;
-
-        public INodeDirectory(String path) {
-            this.path = path;
-            this.children = new LinkedList<>();
-        }
-
-        public void addChild(INode inode) {
-            this.children.add(inode);
-        }
-    }
-
-    /**
-     * 文件目录树中的一个文件
-     */
-    @Data
-    @NoArgsConstructor
-    public static class INodeFile implements INode {
-        private String name;
     }
 }

@@ -163,4 +163,9 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
         responseObserver.onNext(response);
         responseObserver.onCompleted();
     }
+
+    @Override
+    public void create(CreateFileRequest request, StreamObserver<CreateFileResponse> responseObserver) {
+        super.create(request, responseObserver);
+    }
 }

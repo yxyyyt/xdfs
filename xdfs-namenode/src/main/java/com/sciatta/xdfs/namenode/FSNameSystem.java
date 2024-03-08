@@ -58,6 +58,11 @@ public class FSNameSystem {
     @Setter
     private long checkpointTxid;
 
+    /**
+     * 每个线程自己本地的内存目录树操作状态
+     */
+    private final ThreadLocal<Boolean> localDirectoryOperateStatus = new ThreadLocal<>();
+
     public FSNameSystem() {
         this.directory = new FSDirectory();
         this.editlog = new FSEditLog();
@@ -68,11 +73,12 @@ public class FSNameSystem {
      * 创建目录
      *
      * @param path 目录路径
-     * @return 是否成功
+     * @return true，成功；false，失败
      */
-    public Boolean mkdir(String path) {
+    public boolean mkdir(String path) {
         this.editlog.logEdit(txid -> {
-            this.directory.mkdir(txid, path);
+            boolean ans = this.directory.mkdir(txid, path);
+            localDirectoryOperateStatus.set(ans);
 
             EditLog editLog = new EditLog();
             editLog.setTxid(txid);
@@ -81,7 +87,38 @@ public class FSNameSystem {
 
             return editLog;
         });
-        return true;
+
+        boolean ans = localDirectoryOperateStatus.get();
+        localDirectoryOperateStatus.remove();
+        return ans;
+    }
+
+    /**
+     * 创建文件
+     *
+     * @param path 文件路径
+     * @return true，成功；false，失败
+     */
+    public boolean touch(String path) {
+        this.editlog.logEdit(txid -> {
+            boolean ans = this.directory.touch(txid, path);
+            localDirectoryOperateStatus.set(ans);
+
+            if (!ans) {
+                return null;
+            }
+
+            EditLog editLog = new EditLog();
+            editLog.setTxid(txid);
+            editLog.setPath(path);
+            editLog.setOperate(EditLogOperateEnum.TOUCH.getOperate());
+
+            return editLog;
+        });
+
+        boolean ans = localDirectoryOperateStatus.get();
+        localDirectoryOperateStatus.remove();
+        return ans;
     }
 
     /**
