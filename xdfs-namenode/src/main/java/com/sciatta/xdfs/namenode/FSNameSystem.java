@@ -3,6 +3,7 @@ package com.sciatta.xdfs.namenode;
 import com.sciatta.xdfs.common.fs.EditLog;
 import com.sciatta.xdfs.common.fs.EditLogOperateEnum;
 import com.sciatta.xdfs.common.fs.FSDirectory;
+import com.sciatta.xdfs.common.fs.INodeDirectory;
 import com.sciatta.xdfs.common.util.FastJsonUtils;
 import com.sciatta.xdfs.common.util.PathUtils;
 import com.sciatta.xdfs.common.util.SystemUtils;
@@ -31,7 +32,7 @@ public class FSNameSystem {
      */
     public static final Integer BACKUP_NODE_FETCH_SIZE = 10;    // TODO fetch可以从备份节点传入，主节点可以界定一个有效范围
 
-    private final FSDirectory directory;
+    private final NameNodeDirectory directory;
 
     @Getter
     private final FSEditLog editlog;
@@ -58,13 +59,8 @@ public class FSNameSystem {
     @Setter
     private long checkpointTxid;
 
-    /**
-     * 每个线程自己本地的内存目录树操作状态
-     */
-    private final ThreadLocal<Boolean> localDirectoryOperateStatus = new ThreadLocal<>();
-
     public FSNameSystem() {
-        this.directory = new FSDirectory();
+        this.directory = new NameNodeDirectory();
         this.editlog = new FSEditLog();
         recoverNameSystem();
     }
@@ -76,21 +72,17 @@ public class FSNameSystem {
      * @return true，成功；false，失败
      */
     public boolean mkdir(String path) {
-        this.editlog.logEdit(txid -> {
-            boolean ans = this.directory.mkdir(txid, path);
-            localDirectoryOperateStatus.set(ans);
+        this.directory.mkdir(path);
 
+        this.editlog.logEdit(txid -> {
             EditLog editLog = new EditLog();
             editLog.setTxid(txid);
             editLog.setPath(path);
             editLog.setOperate(EditLogOperateEnum.MKDIR.getOperate());
-
             return editLog;
         });
 
-        boolean ans = localDirectoryOperateStatus.get();
-        localDirectoryOperateStatus.remove();
-        return ans;
+        return true;
     }
 
     /**
@@ -100,24 +92,18 @@ public class FSNameSystem {
      * @return true，成功；false，失败
      */
     public boolean touch(String path) {
-        this.editlog.logEdit(txid -> {
-            boolean ans = this.directory.touch(txid, path);
-            localDirectoryOperateStatus.set(ans);
+        boolean ans = this.directory.touch(path);
 
-            if (!ans) {
-                return null;
-            }
+        if (ans) {
+            this.editlog.logEdit(txid -> {
+                EditLog editLog = new EditLog();
+                editLog.setTxid(txid);
+                editLog.setPath(path);
+                editLog.setOperate(EditLogOperateEnum.TOUCH.getOperate());
+                return editLog;
+            });
+        }
 
-            EditLog editLog = new EditLog();
-            editLog.setTxid(txid);
-            editLog.setPath(path);
-            editLog.setOperate(EditLogOperateEnum.TOUCH.getOperate());
-
-            return editLog;
-        });
-
-        boolean ans = localDirectoryOperateStatus.get();
-        localDirectoryOperateStatus.remove();
         return ans;
     }
 
@@ -379,8 +365,8 @@ public class FSNameSystem {
 
             buffer.flip();
             String fsimageJson = new String(buffer.array(), 0, count);
-            FSDirectory.INodeDirectory dirTree = FastJsonUtils.parseJsonStringToObject(fsimageJson,
-                    FSDirectory.INodeDirectory.class);
+            INodeDirectory dirTree = FastJsonUtils.parseJsonStringToObject(fsimageJson,
+                    INodeDirectory.class);
             directory.setDirTree(dirTree);
             log.debug("load FSImage success, size {}", fsimageJson.getBytes().length);
         } finally {
@@ -417,7 +403,6 @@ public class FSNameSystem {
 
             buffer.flip();
             this.checkpointTxid = Long.parseLong(new String(buffer.array(), 0, count));
-            this.directory.setMaxTxid(this.checkpointTxid);
             log.debug("load checkpoint txid {} success", this.checkpointTxid);
         } finally {
             if (in != null) {
@@ -435,6 +420,7 @@ public class FSNameSystem {
      * @throws IOException IO异常
      */
     private void loadEditLog() throws IOException {
+        long currentTxid = this.checkpointTxid;
         File dir = new File(PathUtils.getNameNodeEditLogPath());
 
         List<File> files = new ArrayList<>(Arrays.asList(dir.listFiles()));
@@ -457,16 +443,20 @@ public class FSNameSystem {
             long startTxid = Long.parseLong(splitedName[1]);
             long endTxid = Long.parseLong(splitedName[2].split("[.]")[0]);
 
-            if (endTxid > this.directory.getMaxTxid()) {
+            if (endTxid > currentTxid) {
                 String currentEditsLogFile = PathUtils.getNameNodeEditLogFile(startTxid, endTxid);
                 List<String> editLogList = Files.readAllLines(Paths.get(currentEditsLogFile), StandardCharsets.UTF_8);
                 for (String editLogJson : editLogList) {
                     EditLog editLog = FastJsonUtils.parseJsonStringToObject(editLogJson, EditLog.class);
-                    if (editLog != null && editLog.getTxid() > this.directory.getMaxTxid()) {
+                    if (editLog != null && editLog.getTxid() > currentTxid) {
                         String op = editLog.getOperate();
                         // 回放事务日志
                         if (op.equals(EditLogOperateEnum.MKDIR.getOperate())) {
-                            directory.mkdir(editLog.getTxid(), editLog.getPath());
+                            directory.mkdir(editLog.getPath());
+                            currentTxid = editLog.getTxid();
+                        } else if (op.equals(EditLogOperateEnum.TOUCH.getOperate())) {
+                            directory.touch(editLog.getPath());
+                            currentTxid = editLog.getTxid();
                         }
                         log.debug("load {} and rewind EditLog {}", currentEditsLogFile, editLog.getTxid());
                     }
@@ -475,6 +465,6 @@ public class FSNameSystem {
         }
 
         // 恢复当前事务日志序号
-        this.editlog.setTxidSeq(this.directory.getMaxTxid());
+        this.editlog.setTxidSeq(currentTxid);
     }
 }

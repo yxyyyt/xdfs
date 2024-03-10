@@ -68,7 +68,6 @@ public abstract class FSDirectory {
      * @return true，创建成功；false，创建失败
      */
     protected boolean touch(String path) { // TODO  区分创建失败，重复
-        // 创建目录
         String filePath = PathUtils.getFilePath(path);
         String filename = PathUtils.getFileName(path);
 
@@ -76,6 +75,7 @@ public abstract class FSDirectory {
 
         if (StringUtils.isBlank(filename)) return false;
 
+        // 创建目录
         INodeDirectory currentDir = mkdir(filePath);
         if (isFileExist(currentDir, filename)) return false;
 

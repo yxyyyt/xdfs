@@ -59,6 +59,8 @@ public class EditLogFetcher extends Thread {
 
                 if (editLog.getOperate().equals(EditLogOperateEnum.MKDIR.getOperate())) {
                     this.nameSystem.mkdir(editLog.getTxid(), editLog.getPath());
+                } else if (editLog.getOperate().equals(EditLogOperateEnum.TOUCH.getOperate())) {
+                    this.nameSystem.touch(editLog.getTxid(), editLog.getPath());
                 }
 
                 this.syncedTxid = editLog.getTxid();

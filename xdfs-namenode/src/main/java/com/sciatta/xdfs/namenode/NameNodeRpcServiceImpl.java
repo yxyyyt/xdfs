@@ -166,6 +166,27 @@ public class NameNodeRpcServiceImpl extends NameNodeRpcServiceGrpc.NameNodeRpcSe
 
     @Override
     public void create(CreateFileRequest request, StreamObserver<CreateFileResponse> responseObserver) {
-        super.create(request, responseObserver);
+        CreateFileResponse response;
+
+        if (!isRunning) {
+            response = CreateFileResponse.newBuilder()
+                    .setStatus(NameNodeRpcResponseStatus.SHUTDOWN.getValue())
+                    .build();
+        } else {
+            if (this.nameSystem.touch(request.getFilename())) {
+                response = CreateFileResponse.newBuilder()
+                        .setStatus(NameNodeRpcResponseStatus.SUCCESS.getValue())
+                        .build();
+            } else {
+                response = CreateFileResponse.newBuilder()
+                        .setStatus(NameNodeRpcResponseStatus.FAIL.getValue())
+                        .build();
+            }
+        }
+
+        log.debug("create file path {}, response status {}", request.getFilename(), response.getStatus());
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 }

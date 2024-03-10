@@ -55,11 +55,21 @@ public class FSNameSystem {
      *
      * @param txid 当前事务日志序号
      * @param path 目录路径
-     * @return 是否成功
+     * @return 是否创建成功；true，创建成功；false 创建失败
      */
-    public Boolean mkdir(long txid, String path) {
-        this.directory.mkdir(txid, path);
-        return true;
+    public boolean mkdir(long txid, String path) {
+        return this.directory.mkdir(txid, path);
+    }
+
+    /**
+     * 创建目录
+     *
+     * @param txid 当前事务日志序号
+     * @param path 文件路径
+     * @return 是否创建成功；true，创建成功；false 创建失败
+     */
+    public boolean touch(long txid, String path) {
+        return this.directory.touch(txid, path);
     }
 
     /**

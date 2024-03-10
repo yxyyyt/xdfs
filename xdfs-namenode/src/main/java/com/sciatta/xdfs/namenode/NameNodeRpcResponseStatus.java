@@ -17,7 +17,12 @@ public enum NameNodeRpcResponseStatus {
     /**
      * 关闭
      */
-    SHUTDOWN(1);
+    SHUTDOWN(1),
+
+    /**
+     * 失败
+     */
+    FAIL(2);
 
     private final int value;
 
